@@ -34,6 +34,7 @@ Do not use it for discovery, design, or plan writing.
 5. For non-trivial, independent, or multi-file work — and by default under OMO-style execution — delegate with a self-contained prompt.
 6. Run the verification the plan asks for, or the smallest fresh check that proves the step.
 7. Report milestone progress updates, then move on only after evidence confirms the step is done.
+8. Once the full plan is implemented and verified, archive the completed plan by moving it from `docs/plans/` to `docs/archive/`.
 
 ## Delegation Rules
 
@@ -88,4 +89,5 @@ Keep this skill narrow. Planning belongs to `writing-plans`. Parallel or multi-a
 - Delegate non-trivial work by default
 - One in-progress task at a time when tracking is active
 - Verify with evidence before advancing or claiming done
+- Archive completed plans in `docs/archive/` after implementation finishes
 - Keep updates brief and milestone-based

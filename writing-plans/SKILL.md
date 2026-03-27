@@ -14,7 +14,7 @@ Assume they are a skilled developer, but know almost nothing about the toolset o
 **Context:** If the current workflow already uses a dedicated workspace or branch convention, write the plan for that workspace. If the current workflow uses OhMyOpenCode / OMO-style plan handoff, write the plan where execution expects to find it.
 
 **Save plans to:**
-- `.sisyphus/plans/<feature-name>.md` when the active workflow uses OMO-style `/start-work` handoff
+- `docs/plans/<feature-name>.md` when the active workflow uses OMO-style `/start-work` handoff
 - otherwise, follow the workspace convention or user preference
 
 ## Scope Check

@@ -13,7 +13,7 @@ Inspect the repository's existing versioning scheme, make the smallest safe chan
 
 ## OpenCode / OMO Compatibility
 
-This skill governs version-related work only. It does not override user instructions, repository policy, or controller decisions about commits, tags, pushes, releases, or delegation.
+This skill governs version-related work only. It does not override user instructions, repository policy, or controller decisions about commits, tags, pushes, releases, or delegation. When the user explicitly asks for the full version finalization flow, include the requested commit, tag, and push steps.
 
 ## When to Use
 
@@ -23,6 +23,7 @@ Use this skill when you need to:
 - validate drift between declared versions
 - confirm the expected tag or release naming
 - prepare version metadata for a release
+- complete the requested version commit and tag flow
 
 If the repository's versioning scheme is still unclear after inspection, ask one targeted question before editing.
 
@@ -30,6 +31,7 @@ If the repository's versioning scheme is still unclear after inspection, ask one
 
 Before making changes, inspect the existing versioning workflow and determine:
 - the editable source of truth
+- whether a `VERSION` file exists and is the source of truth
 - whether the repo already has a helper script, task runner command, or release tool for version changes
 - which files are expected to stay in sync
 - how tags and releases are named
@@ -59,7 +61,17 @@ For a bump request such as `patch`, `minor`, `major`, or prerelease:
 
 Keep the diff small. Do not refactor unrelated release logic while changing the version.
 
-## Step 4: Verify Before Claiming Done
+## Step 4: Finalize the Version Change When Explicitly Requested
+
+If the user explicitly asks you to finish the versioning flow after the version update:
+- commit the version-related changes using the repository's normal commit workflow
+- read the final version from the repository's source of truth; if that source of truth is a `VERSION` file, use its resolved value for the version tag
+- create the version tag using the repository's existing tag naming convention
+- push the version tag when the user asked for that push step
+
+Do not invent a new tag format just because a `VERSION` file exists. Use the repository's established convention unless the user explicitly says otherwise.
+
+## Step 5: Verify Before Claiming Done
 
 Before claiming version work is complete, gather fresh evidence for:
 - the current resolved version
@@ -76,6 +88,7 @@ If the change affects packaging, release builds, or runtime version reporting, r
 3. Keep subprojects self-contained. Do not add runtime dependencies on repo-root version files unless the repository already works that way.
 4. Do not invent a new tagging scheme, release process, or version file during a routine version update.
 5. Do not commit, tag, push, or publish unless the user explicitly asks.
+6. When the user explicitly asks for commit and tag finalization, derive the final version from the repository's source of truth; if that source is a `VERSION` file, use that resolved version for the tag.
 
 ## Anti-Patterns
 

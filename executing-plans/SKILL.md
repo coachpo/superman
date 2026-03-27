@@ -15,6 +15,8 @@ Optional start note: "I'm using the executing-plans skill to carry out the appro
 
 Under OhMyOpenCode, the parent orchestrator owns routing, task tracking policy, verification policy, and irreversible actions. This skill only guides execution after the plan is already approved.
 
+When the active workflow is OMO-style execution, assume a delegate-first posture: the orchestrator coordinates and verifies, while specialized workers handle non-trivial implementation work.
+
 Do not use this skill to restart planning. If the plan needs rework, hand it back to the parent workflow or the planning skill.
 
 ## When to Use
@@ -28,8 +30,8 @@ Do not use it for discovery, design, or plan writing.
 1. Read the plan and extract the next actionable task.
 2. If context is incomplete, stop and explore first. Use targeted file reads, searches, or delegated exploration before guessing. If the unknowns are independent, gather that context in parallel.
 3. If task tracking is active, keep exactly one task in progress at a time.
-4. For trivially local steps, execute directly.
-5. For non-trivial, independent, or multi-file work, delegate by default with a self-contained prompt.
+4. If the active workflow explicitly allows a trivially local step to stay inline, execute it directly.
+5. For non-trivial, independent, or multi-file work — and by default under OMO-style execution — delegate with a self-contained prompt.
 6. Run the verification the plan asks for, or the smallest fresh check that proves the step.
 7. Report milestone progress updates, then move on only after evidence confirms the step is done.
 
@@ -41,9 +43,11 @@ Prefer delegation when work is:
 - easier to inspect in isolation
 - likely to benefit from a fresh context
 
+Under OMO-style execution, delegation is the default for writing, editing, testing, and similar multi-step implementation work unless the parent workflow explicitly keeps a step local.
+
 Keep prompts self-contained. Include the task goal, exact scope, known constraints, expected output, and verification the delegated work must satisfy.
 
-Direct execution is reserved for truly local, mechanical steps, such as a small edit, a narrow command, or a simple verification that clearly stays in one file or one obvious action.
+Direct execution is reserved for truly local, mechanical steps that the active workflow has intentionally kept inline, such as a tiny edit, a narrow command, or a simple verification that clearly stays in one file or one obvious action.
 
 ## Progress Updates
 
@@ -74,7 +78,7 @@ Stop and escalate when:
 
 ## Integration
 
-Keep this skill narrow. Planning belongs to `writing-plans`. Parallel or multi-agent preparation belongs to `dispatching-parallel-agents` or `subagent-driven-development`. Completion gates belong to `verification-before-completion`.
+Keep this skill narrow. Planning belongs to `writing-plans`. Parallel or multi-agent preparation belongs to the current workflow's delegation mechanism. Completion gates belong to `verification-before-completion`.
 
 ## Remember
 

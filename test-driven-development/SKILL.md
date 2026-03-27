@@ -1,6 +1,6 @@
 ---
 name: test-driven-development
-description: Use when implementing any feature or bugfix, before writing implementation code
+description: Use when implementing a behavior-changing feature or bugfix, before writing implementation code
 ---
 
 # Test-Driven Development (TDD)
@@ -19,26 +19,27 @@ This skill governs implementation technique when the current workflow wants TDD.
 
 ## When to Use
 
-**Always:**
+Use this skill when the work changes behavior and that behavior can be proven with tests:
 - New features
 - Bug fixes
-- Refactoring
-- Behavior changes
+- API, validation, state, or logic changes
 
-**Exceptions (ask the user or current workflow):**
+Usually skip this skill, or ask the user / current workflow before forcing it, for:
 - Throwaway prototypes
 - Generated code
-- Configuration files
+- Documentation or content-only edits
+- Many configuration-only changes
+- Mechanical renames or format-only work with no behavior change
 
 Thinking "skip TDD just this once"? Stop. That's rationalization.
 
 ## The Iron Law
 
 ```
-NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
+WHEN USING THIS SKILL FOR BEHAVIOR-CHANGING WORK: NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 ```
 
-Write code before the test? Delete it. Start over.
+Write behavior-changing production code before the test? Delete it. Start over.
 
 **No exceptions:**
 - Don't keep it as "reference"
@@ -289,7 +290,7 @@ Tests-first force edge case discovery before implementing. Tests-after verify yo
 - "TDD is dogmatic, I'm being pragmatic"
 - "This is different because..."
 
-**All of these mean: Delete code. Start over with TDD.**
+**All of these mean: Stop and restart the behavior-changing change from a failing test.**
 
 ## Example: Bug Fix
 
@@ -332,7 +333,7 @@ Extract validation for multiple fields if needed.
 
 Before marking work complete:
 
-- [ ] Every new function/method has a test
+- [ ] Every new or changed behavior has a test
 - [ ] Watched each test fail before implementing
 - [ ] Each test failed for expected reason (feature missing, not typo)
 - [ ] Wrote minimal code to pass each test
@@ -341,7 +342,7 @@ Before marking work complete:
 - [ ] Tests use real code (mocks only if unavoidable)
 - [ ] Edge cases and errors covered
 
-Can't check all boxes? You skipped TDD. Start over.
+Can't check all boxes for behavior-changing work? You skipped TDD. Start over.
 
 ## When Stuck
 
@@ -368,7 +369,7 @@ When adding mocks or test utilities, read `testing-anti-patterns.md` in this dir
 ## Final Rule
 
 ```
-Production code → test exists and failed first
+Behavior-changing production code → test exists and failed first
 Otherwise → not TDD
 ```
 

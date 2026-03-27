@@ -11,10 +11,11 @@ Write comprehensive implementation plans assuming the implementer has zero conte
 
 Assume they are a skilled developer, but know almost nothing about the toolset or problem domain. Assume they don't know good test design very well.
 
-**Context:** If the current workflow already uses a dedicated workspace or branch convention, write the plan for that workspace. Otherwise stay neutral about workspace setup.
+**Context:** If the current workflow already uses a dedicated workspace or branch convention, write the plan for that workspace. If the current workflow uses OhMyOpenCode / OMO-style plan handoff, write the plan where execution expects to find it.
 
-**Save plans to:** `docs/plans/YYYY-MM-DD-<feature-name>.md`
-- (User preferences for plan location override this default)
+**Save plans to:**
+- `.sisyphus/plans/<feature-name>.md` when the active workflow uses OMO-style `/start-work` handoff
+- otherwise, follow the workspace convention or user preference
 
 ## Scope Check
 
@@ -33,12 +34,16 @@ This structure informs the task decomposition. Each task should produce self-con
 
 ## Bite-Sized Task Granularity
 
-**Each step is one action (2-5 minutes):**
-- "Write the failing test" - step
-- "Run it to make sure it fails" - step
-- "Implement the minimal code to make the test pass" - step
-- "Run the tests and make sure they pass" - step
-- "Commit" - step
+Choose the smallest steps that keep progress clear, verifiable, and low-guesswork.
+
+Many good steps are roughly 2-5 minutes, but that is guidance, not a hard rule. Split or combine work based on risk, verification needs, and handoff clarity.
+
+Examples of appropriately-scoped steps:
+- "Write the failing test"
+- "Run it to make sure it fails"
+- "Implement the minimal code to make the test pass"
+- "Run the tests and make sure they pass"
+- "Commit"
 
 ## Plan Document Header
 
@@ -102,7 +107,8 @@ pytest tests/path/test.py::test_name -v
 
 ## Remember
 - Exact file paths always
-- Complete code in plan (not "add validation")
+- Be exact enough that the implementer can act without guessing
+- Prefer concrete edits, acceptance criteria, and verification steps over vague instructions like "add validation"
 - Exact commands with expected output
 - Reference related skills or workflows only when they materially help the implementer
 - DRY, YAGNI, explicit verification

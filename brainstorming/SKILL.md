@@ -7,25 +7,25 @@ description: "Use when a task needs collaborative design, requirements discovery
 
 Help turn ideas into fully formed designs and specs through natural collaborative dialogue.
 
-Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the design and get user approval.
+Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the design and validate it with the user when the scope or workflow calls for it.
 
 <HARD-GATE>
 When this skill is loaded, it guides design exploration only. Let the current workflow control task creation, delegation, review, persistence, and the decision to proceed with implementation.
 </HARD-GATE>
 
-## Anti-Pattern: "This Is Too Simple To Need A Design"
+## Anti-Pattern: "Skipping Design When Scope Is Actually Unclear"
 
-Every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
+Use this process when the work is ambiguous, design-heavy, multi-step, or high-risk. Do not force a formal brainstorming pass onto trivial, local, or already-obvious tasks when the current workflow can proceed safely without it.
 
 ## Checklist
 
-Use the following stages when the current workflow loads this skill. Treat documentation, review loops, and handoff steps as optional unless the user or controller asks for them:
+Use the following stages when the current workflow loads this skill for non-trivial design work. Treat documentation, review loops, and handoff steps as optional unless the user or controller asks for them:
 
 1. **Explore project context** — check files, docs, recent commits
 2. **Offer visual companion** (if topic will involve visual questions) — this is its own message, not combined with a clarifying question. See the Visual Companion section below.
 3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
 4. **Propose 2-3 approaches** — with trade-offs and your recommendation
-5. **Present design** — in sections scaled to their complexity, get user approval after each section
+5. **Present design** — in sections scaled to their complexity, validate at meaningful checkpoints
 6. **Optional: Write design doc** — save to `docs/specs/YYYY-MM-DD-<topic>-design.md` only if the user or current workflow wants a written spec
 7. **Optional: Review the spec** — use the current workflow's review mechanism if a spec review is requested
 8. **Optional: Ask user to review the written spec** — do this when a written spec is part of the agreed workflow
@@ -41,8 +41,10 @@ digraph brainstorming {
     "Ask clarifying questions" [shape=box];
     "Propose 2-3 approaches" [shape=box];
     "Present design sections" [shape=box];
-    "User approves design?" [shape=diamond];
+    "Design validated?" [shape=diamond];
+    "Written spec requested?" [shape=diamond];
     "Write design doc" [shape=box];
+    "Spec review requested?" [shape=diamond];
     "Spec review loop" [shape=box];
     "Spec review passed?" [shape=diamond];
     "User reviews spec?" [shape=diamond];
@@ -54,10 +56,14 @@ digraph brainstorming {
     "Offer Visual Companion\n(own message, no other content)" -> "Ask clarifying questions";
     "Ask clarifying questions" -> "Propose 2-3 approaches";
     "Propose 2-3 approaches" -> "Present design sections";
-    "Present design sections" -> "User approves design?";
-    "User approves design?" -> "Present design sections" [label="no, revise"];
-    "User approves design?" -> "Write design doc" [label="yes"];
-    "Write design doc" -> "Spec review loop";
+    "Present design sections" -> "Design validated?";
+    "Design validated?" -> "Present design sections" [label="no, revise"];
+    "Design validated?" -> "Written spec requested?" [label="yes"];
+    "Written spec requested?" -> "Write design doc" [label="yes"];
+    "Written spec requested?" -> "Return clarified design" [label="no"];
+    "Write design doc" -> "Spec review requested?";
+    "Spec review requested?" -> "Spec review loop" [label="yes"];
+    "Spec review requested?" -> "User reviews spec?" [label="no"];
     "Spec review loop" -> "Spec review passed?";
     "Spec review passed?" -> "Spec review loop" [label="issues found,\nfix and re-dispatch"];
     "Spec review passed?" -> "User reviews spec?" [label="approved"];
@@ -90,7 +96,7 @@ digraph brainstorming {
 
 - Once you believe you understand what you're building, present the design
 - Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
-- Ask after each section whether it looks right so far
+- For nuanced or high-risk work, validate after each major section. For straightforward cases, validate the design once the full picture is clear.
 - Cover: architecture, components, data flow, error handling, testing
 - Be ready to go back and clarify if something doesn't make sense
 
@@ -137,7 +143,7 @@ Wait for the user's response when review is requested. If they request changes, 
 - **Multiple choice preferred** - Easier to answer than open-ended when possible
 - **YAGNI ruthlessly** - Remove unnecessary features from all designs
 - **Explore alternatives** - Always propose 2-3 approaches before settling
-- **Incremental validation** - Present design, get approval before moving on
+- **Incremental validation** - Validate at meaningful checkpoints, not by rote
 - **Be flexible** - Go back and clarify when something doesn't make sense
 
 ## Visual Companion

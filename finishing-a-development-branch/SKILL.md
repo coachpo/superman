@@ -1,6 +1,6 @@
 ---
 name: finishing-a-development-branch
-description: Use when implementation is complete, all tests pass, and you need to decide how to integrate the work - guides completion of development work by presenting structured options for merge, PR, or cleanup
+description: Use when implementation is complete, required verification has passed, and you need to decide how to integrate the work - guides completion of development work by presenting structured options for merge, PR, or cleanup
 ---
 
 # Finishing a Development Branch
@@ -9,31 +9,33 @@ description: Use when implementation is complete, all tests pass, and you need t
 
 Guide completion of development work by presenting clear options and handling chosen workflow.
 
-**Core principle:** Verify tests → Present options → Execute choice → Clean up.
+**Core principle:** Verify completion evidence → Present options → Execute choice → Clean up.
 
 ## The Process
 
-### Step 1: Verify Tests
+### Step 1: Verify Completion Evidence
 
-**Before presenting options, verify tests pass:**
+**Before presenting options, verify the repo-appropriate completion checks pass:**
 
 ```bash
-# Run project's test suite
+# Run the checks that actually prove completion in this repo
+# Examples: tests, build, lint/typecheck, manual QA for user-visible changes
 npm test / cargo test / pytest / go test ./...
+npm run build / cargo build / tsc --noEmit
 ```
 
-**If tests fail:**
+**If required verification fails:**
 ```
-Tests failing (<N> failures). Must fix before completing:
+Verification failing. Must fix before completing:
 
-[Show failures]
+[Show failing checks]
 
-Cannot proceed with merge/PR until tests pass.
+Cannot proceed with merge/PR until required completion checks pass.
 ```
 
 Stop. Don't proceed to Step 2.
 
-**If tests pass:** Continue to Step 2.
+**If required verification passes:** Continue to Step 2.
 
 ### Step 2: Determine Base Branch
 
@@ -46,7 +48,7 @@ Or ask: "This branch split from main - is that correct?"
 
 ### Step 3: Present Options
 
-Present exactly these 4 options:
+Present the standard integration options that fit the current repo/workflow. In many cases, that looks like:
 
 ```
 Implementation complete. What would you like to do?
@@ -59,7 +61,7 @@ Implementation complete. What would you like to do?
 Which option?
 ```
 
-**Don't add explanation** - keep options concise.
+Keep the options concise. Add or remove options only when the repo or workflow clearly requires it.
 
 ### Step 4: Execute Choice
 
@@ -75,14 +77,14 @@ git pull
 # Merge feature branch
 git merge <feature-branch>
 
-# Verify tests on merged result
-<test command>
+# Verify required completion checks on merged result
+<repo-appropriate verification commands>
 
-# If tests pass
+# If verification passes
 git branch -d <feature-branch>
 ```
 
-Then: Cleanup worktree (Step 5)
+Then: Cleanup worktree if this branch uses a separate worktree (Step 5)
 
 #### Option 2: Push and Open Review
 
@@ -94,13 +96,13 @@ git push -u origin <feature-branch>
 # Otherwise stop after push and report the branch name, title, and summary.
 ```
 
-Then: Keep branch and worktree available for follow-up unless the user asks to clean them up.
+Then: Keep branch and checkout/worktree available for follow-up unless the user asks to clean them up.
 
 #### Option 3: Keep As-Is
 
-Report: "Keeping branch <name>. Worktree preserved at <path>."
+Report: "Keeping branch <name>. Current checkout preserved. If this branch uses a separate worktree, leave it in place."
 
-**Don't cleanup worktree.**
+**Don't cleanup the current checkout or any associated worktree.**
 
 #### Option 4: Discard
 
@@ -109,7 +111,7 @@ Report: "Keeping branch <name>. Worktree preserved at <path>."
 This will permanently delete:
 - Branch <name>
 - All commits: <commit-list>
-- Worktree at <path>
+- Worktree at <path> (if any)
 
 Type 'discard' to confirm.
 ```
@@ -122,11 +124,11 @@ git checkout <base-branch>
 git branch -D <feature-branch>
 ```
 
-Then: Cleanup worktree (Step 5)
+Then: Cleanup worktree if this branch uses a separate worktree (Step 5)
 
-### Step 5: Cleanup Worktree
+### Step 5: Cleanup Worktree If One Exists
 
-**For Options 1 and 4:**
+**For Options 1 and 4, only if this branch uses a separate worktree:**
 
 Check if in worktree:
 ```bash
@@ -138,7 +140,7 @@ If yes:
 git worktree remove <worktree-path>
 ```
 
-**For Options 2 and 3:** Keep worktree.
+**For Options 2 and 3:** Keep the current checkout/worktree available.
 
 ## Quick Reference
 
@@ -151,17 +153,17 @@ git worktree remove <worktree-path>
 
 ## Common Mistakes
 
-**Skipping test verification**
-- **Problem:** Merge broken code, create failing PR
-- **Fix:** Always verify tests before offering options
+**Skipping completion verification**
+- **Problem:** Merge or publish work that is not actually ready
+- **Fix:** Always verify the repo-appropriate completion checks before offering options
 
 **Open-ended questions**
 - **Problem:** "What should I do next?" → ambiguous
-- **Fix:** Present exactly 4 structured options
+- **Fix:** Present structured, repo-appropriate options instead of an open-ended prompt
 
 **Automatic worktree cleanup**
-- **Problem:** Remove worktree when might need it (Option 2, 3)
-- **Fix:** Only cleanup for Options 1 and 4
+- **Problem:** Remove a worktree or checkout that may still be needed
+- **Fix:** Only clean up when the selected option calls for it and a separate worktree actually exists
 
 **No confirmation for discard**
 - **Problem:** Accidentally delete work
@@ -170,21 +172,21 @@ git worktree remove <worktree-path>
 ## Red Flags
 
 **Never:**
-- Proceed with failing tests
-- Merge without verifying tests on result
+- Proceed with failing required verification
+- Merge without verifying the merged result
 - Delete work without confirmation
 - Force-push without explicit request
 
 **Always:**
-- Verify tests before offering options
-- Present exactly 4 options
+- Verify required completion checks before offering options
+- Present structured, repo-appropriate options
 - Get typed confirmation for Option 4
-- Clean up worktree for Options 1 & 4 only
+- Clean up a separate worktree only when the chosen option calls for it
 
 ## Integration
 
 **Fits after:**
-- Any implementation workflow that has already verified tests and needs a merge / review / keep / discard decision
+- Any implementation workflow that has already verified required completion checks and needs a merge / review / keep / discard decision
 
 **Pairs with:**
 - Workspace or worktree-based workflows when cleanup is needed

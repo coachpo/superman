@@ -14,8 +14,16 @@ Assume they are a skilled developer, but know almost nothing about the toolset o
 **Context:** If the current workflow already uses a dedicated workspace or branch convention, write the plan for that workspace. If the current workflow uses OhMyOpenCode / OMO-style plan handoff, write the plan where execution expects to find it.
 
 **Save plans to:**
-- `docs/plans/<feature-name>.md` when the active workflow uses OMO-style `/start-work` handoff
-- otherwise, follow the workspace convention or user preference
+- `docs/plans/YYYY-MM-DD-<sequent>-<plan-name>.md` when the active workflow uses OMO-style `/start-work` handoff
+- otherwise, follow the workspace convention or user preference for the directory, but keep the same filename format unless the user explicitly requires a different one
+
+**Plan filename convention:**
+- Plan filenames MUST use `YYYY-MM-DD-<sequent>-<plan-name>.md`
+- `<sequent>` is the sequential plan number for the entire target plans folder, using a max+1 approach across existing plan filenames in that folder
+- If there are no existing plan files in the target plans folder, use `<sequent>` = `1`
+- If the highest existing `<sequent>` in the folder is `1`, the next plan uses `2`; if the highest is `7`, the next plan uses `8`
+- Do not reset `<sequent>` by date or by plan name; always use the highest existing `<sequent>` in the target plans folder plus `1`
+- `<plan-name>` should be a short kebab-case name that describes the plan
 
 ## Scope Check
 

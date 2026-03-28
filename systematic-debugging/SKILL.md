@@ -98,7 +98,7 @@ You MUST complete each phase before proceeding to the next.
 
    # Layer 2: Build script
    echo "=== Env vars in build script: ==="
-   env | grep IDENTITY || echo "IDENTITY not in environment"
+   env | rg -F -- 'IDENTITY=' || echo "IDENTITY not in environment"
 
    # Layer 3: Signing script
    echo "=== Keychain state: ==="

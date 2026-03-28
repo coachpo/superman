@@ -132,7 +132,7 @@ Then: Cleanup worktree if this branch uses a separate worktree (Step 5)
 
 Check if in worktree:
 ```bash
-git worktree list | grep $(git branch --show-current)
+git worktree list | rg -F -- "[$(git branch --show-current)]"
 ```
 
 If yes:

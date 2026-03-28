@@ -128,7 +128,7 @@ echo "$SERVER_PID" > "$PID_FILE"
 
 # Wait for server-started message (check log file)
 for i in {1..50}; do
-  if grep -q "server-started" "$LOG_FILE" 2>/dev/null; then
+  if rg -Fq -- "server-started" "$LOG_FILE" 2>/dev/null; then
     # Verify server is still alive after a short window (catches process reapers)
     alive="true"
     for _ in {1..20}; do
@@ -142,7 +142,7 @@ for i in {1..50}; do
       echo "{\"error\": \"Server started but was killed. Retry in a persistent terminal with: $SCRIPT_DIR/start-server.sh${PROJECT_DIR:+ --project-dir $PROJECT_DIR} --host $BIND_HOST --url-host $URL_HOST --foreground\"}"
       exit 1
     fi
-    grep "server-started" "$LOG_FILE" | head -1
+    rg -F -N -m 1 -- "server-started" "$LOG_FILE"
     exit 0
   fi
   sleep 0.1

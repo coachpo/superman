@@ -64,12 +64,14 @@ Do not use when:
 
 ## Required Forward-Only Policy
 
-- Add this rule somewhere obvious in the root `AGENTS.md`, and repeat it in child docs when local engineering rules matter:
-  - future updates do not need backward compatibility unless the user explicitly asks for it
-  - the best current design or file layout wins over preserving legacy seams
+- Write this as a binding instruction for future agent readers, not as commentary about repo history.
+- Put it somewhere obvious in the root `AGENTS.md`, and repeat it in child docs when local engineering rules matter.
+- Use direct agent-facing wording that tells the next agent what not to do:
+  - do not preserve backward compatibility unless the user explicitly asks for it
+  - prefer the best current design or file layout over preserving legacy seams
   - do not add shim code, compatibility wrappers, temporary dual implementations, or debt-preserving transitions
-- If exact wording helps, use this sentence:
-  - `Prefer the best current shape over backward compatibility. Future updates do not need shim code, compatibility wrappers, or debt-preserving transition layers unless the user explicitly asks for them.`
+- If exact wording helps, use this instruction block:
+  - `Do not preserve backward compatibility unless the user explicitly asks for it. Prefer the best current shape. Do not add shim code, compatibility wrappers, temporary dual implementations, or debt-preserving transition layers.`
 
 ## Creation and Update Rules
 

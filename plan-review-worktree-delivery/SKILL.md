@@ -143,7 +143,7 @@ Inside the worktree:
 
 Do not silently drift away from the approved plan.
 
-## Step 7: Commit and Rebase Cleanly
+## Step 7: Commit the Changes, Then Pause for Approval
 
 Before creating the commit, run the repository-appropriate verification promised in the approved plan.
 
@@ -154,12 +154,28 @@ Minimum checks:
 
 If verification fails, fix the real issue before creating the commit.
 
-Create a focused commit in the worktree. Then rebase the branch onto the latest `main`.
+Create a focused commit in the worktree.
 
 Example only:
 ```bash
 git add <files>
 git commit -m "<type>: <summary>"
+```
+
+After the commit exists, stop and ask for explicit user approval before doing either of the remaining irreversible workflow steps:
+- rebasing onto `main`
+- deleting the worktree
+
+Do not assume prior task approval also approves the post-commit cleanup flow. Ask again after the commit is created.
+
+## Step 8: After User Approval, Rebase and Delete the Worktree
+
+Proceed only after the user explicitly approves the post-commit steps.
+
+First, rebase the branch onto the latest `main`.
+
+Example only:
+```bash
 git fetch origin
 git rebase origin/main
 ```
@@ -171,8 +187,6 @@ When conflicts happen:
 4. Update the saved plan only if the final post-rebase implementation materially differs from the approved version.
 
 Do not treat a conflict-free rebase as proof that the change is still correct.
-
-## Step 8: Remove the Worktree After Completion
 
 Remove the worktree only after:
 - the implementation commit exists
@@ -195,6 +209,7 @@ Before calling this workflow complete, produce:
 - an approved plan file saved in the repository
 - a committed implementation branch based on that plan
 - verification evidence from the worktree state you are about to keep
+- explicit user approval for the post-commit rebase and cleanup steps
 - confirmation that the worktree was removed cleanly
 
 ## Anti-Patterns
@@ -204,8 +219,10 @@ Before calling this workflow complete, produce:
 - implementing before the Momus loop approves the plan
 - saving every draft instead of only the approved plan
 - creating a worktree from a stale `main`
+- rebasing after the commit without explicit user approval
 - rebasing before the first meaningful commit exists
 - resolving conflicts without re-checking the approved plan
+- deleting the worktree without explicit user approval
 - deleting a worktree that still contains uncommitted changes
 - deleting the branch when the user only asked for worktree cleanup
 
@@ -216,4 +233,5 @@ Stop and ask a targeted question when:
 - the `main` branch assumption appears wrong for this repo
 - the verification command is unknown
 - the critic loop exposes unresolved product decisions
+- the user has not yet approved the post-commit rebase and cleanup steps
 - the worktree contains uncommitted changes at cleanup time

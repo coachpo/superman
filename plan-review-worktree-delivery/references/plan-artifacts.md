@@ -101,6 +101,10 @@ Approved
 - Main branch: <main-or-repo-specific-default>
 - Implementation branch: <branch-name>
 - Worktree path: <worktree-path>
+
+## Post-Commit Control
+- Rebase after commit requires explicit user approval: yes
+- Worktree deletion requires explicit user approval: yes
 ```
 
 ## Approval Checklist
@@ -111,3 +115,4 @@ Before calling the plan approved, confirm all of the following:
 - the verification section proves completion instead of hoping for it
 - the risks and rollback notes are specific enough to use under pressure
 - the created worktree path and task branch are recorded before implementation starts
+- the plan records that post-commit rebase and worktree deletion require explicit user approval

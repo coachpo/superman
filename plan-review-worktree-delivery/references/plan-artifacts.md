@@ -17,6 +17,7 @@ Repository facts:
 - Main branch: <main-or-repo-specific-default>
 - Task branch: <branch-name>
 - Worktree path: <worktree-path>
+- Submodules in scope: <none | list>
 - Plan path: <plan-path>
 - Worktree helper: <helper-or-none>
 - Verification: <real verification commands or checks>
@@ -27,10 +28,11 @@ Constraints:
 Return sections:
 1. Goal and scope
 2. Assumptions
-3. Touch points
+3. Superproject and submodule touch points
 4. Step-by-step implementation
 5. Verification
-6. Risks and rollback
+6. Commit strategy
+7. Risks and rollback
 ```
 
 ## Momus Critic Prompt
@@ -77,6 +79,11 @@ Approved
 ## Assumptions
 - <assumption>
 
+## Submodule Scope
+- In scope: <none | list>
+- Superproject-only changes: <yes/no>
+- Submodule content changes: <yes/no, which ones>
+
 ## Implementation Steps
 1. <step>
 2. <step>
@@ -85,6 +92,11 @@ Approved
 ## Verification
 1. <check>
 2. <check>
+
+## Commit Strategy
+- Submodule commits needed: <none | list>
+- Parent repo pointer update needed: <yes/no>
+- Commit order: <order>
 
 ## Risks and Rollback
 - Risk: <risk>
@@ -112,7 +124,9 @@ Approved
 Before calling the plan approved, confirm all of the following:
 - the requirement is fully represented in the plan
 - the plan names the expected files, systems, or touch points
+- the plan distinguishes superproject work from submodule work when submodules exist
 - the verification section proves completion instead of hoping for it
 - the risks and rollback notes are specific enough to use under pressure
 - the created worktree path and task branch are recorded before implementation starts
 - the plan records that post-commit rebase and worktree deletion require explicit user approval
+- the plan records the commit strategy for touched submodules instead of leaving it implicit

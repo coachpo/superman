@@ -1,6 +1,6 @@
 ---
 name: plan-review-worktree-delivery
-description: Use when a requirement is ready for implementation and you want every task to begin by creating a git worktree, then have @Prometheus draft the plan, @Momus critique it until approval, save the approved plan in the repository, implement inside that worktree, commit, rebase onto `main`, and clean up the worktree afterward.
+description: Use when a requirement is ready for implementation and you want every task to begin by creating a git worktree, then have @Prometheus draft the plan, @Momus critique it until approval, save the approved plan in the repository, implement inside that worktree, and handle clean post-commit flow. Supports repositories with or without git submodules, including planning for touched submodules, submodule initialization in the worktree, submodule commit strategy, rebasing onto `main` after user approval, and worktree cleanup.
 ---
 
 # Plan Review Worktree Delivery
@@ -10,6 +10,8 @@ description: Use when a requirement is ready for implementation and you want eve
 Start every qualifying task by isolating it in a worktree, then do the planning and implementation flow from that isolated checkout.
 
 **Core principle:** Isolate first, critique hard, save the approved artifact, then implement against it.
+
+If the repository has submodules, treat them as explicit planning and verification surfaces, not invisible implementation details.
 
 ## OpenCode / OMO Compatibility
 
@@ -48,6 +50,7 @@ Create the worktree before Prometheus drafts anything.
 Before creating it, determine:
 - whether the repo already has a worktree helper, wrapper script, or local skill
 - whether `main` is the correct base branch for this repo, or whether the repo clearly uses a different default branch
+- whether the repo has git submodules and whether this task touches any of them
 - whether the current checkout is clean enough to create a worktree safely
 - which verification commands will later prove the work is complete
 
@@ -56,6 +59,7 @@ Workflow:
 2. Choose a task branch name that matches repo conventions.
 3. Use the repo's existing worktree helper if it has one.
 4. Otherwise use native git worktree commands.
+5. If the repo has submodules, initialize them inside the new worktree before planning against that checkout.
 
 Example only:
 ```bash
@@ -63,9 +67,18 @@ git fetch origin
 git checkout main
 git pull --ff-only origin main
 git worktree add ../<repo>-<branch-slug> -b <branch-name> main
+cd ../<repo>-<branch-slug>
+git submodule update --init --recursive
 ```
 
-Record the branch name and worktree path immediately. Prometheus and Momus should review the task with that isolation context already established.
+Record the branch name and worktree path immediately.
+
+If the repo has submodules, also record:
+- whether the task changes the superproject only, one submodule, or multiple submodules
+- which submodules were initialized in the worktree
+- whether any submodule-specific branch or commit strategy is already required
+
+Prometheus and Momus should review the task with that isolation context already established.
 
 ## Step 2: Ask Prometheus for the Initial Plan
 
@@ -76,6 +89,7 @@ Give Prometheus:
 - repo facts from Step 1
 - the chosen worktree path
 - the chosen task branch name
+- any submodules in scope
 - constraints, deadlines, or non-goals
 - expected verification surfaces
 - any file, API, or architecture clues already known
@@ -84,8 +98,10 @@ Require the plan to include:
 - goal and scope
 - assumptions and open risks
 - file or subsystem touch points
+- superproject versus submodule responsibilities
 - implementation sequence
 - verification strategy
+- commit strategy when submodule content changes are in scope
 - rollback or recovery notes
 
 Load `references/plan-artifacts.md` for a reusable planner prompt and approved-plan template.
@@ -99,6 +115,7 @@ Require every Momus review to return:
 - blocking issues
 - hidden risks or missing verification
 - any scope mismatch between the requirement and the plan
+- any missing submodule handling if the repo uses submodules
 - concrete revision guidance
 
 ## Step 4: Repeat the Revision Cycle Until Momus Approves
@@ -129,6 +146,7 @@ At minimum, the saved plan must capture:
 - risks and rollback notes
 - approval record
 - the created `main`-based task branch name and worktree path
+- any submodules in scope and how they will be handled
 
 Use the template in `references/plan-artifacts.md` when the repo does not already define its own plan format.
 
@@ -141,6 +159,12 @@ Inside the worktree:
 - rerun the Momus approval loop for material plan changes
 - follow any repo-specific implementation skills that apply
 
+If the repo uses submodules:
+- keep the plan explicit about whether you are editing the superproject, submodule contents, or both
+- initialize and inspect submodules before editing them
+- avoid leaving unrelated submodules dirty
+- if a submodule's code changes, treat that submodule commit and the parent repo pointer update as separate, explicit pieces of work
+
 Do not silently drift away from the approved plan.
 
 ## Step 7: Commit the Changes, Then Pause for Approval
@@ -152,9 +176,16 @@ Minimum checks:
 - any repo-mandated tests, builds, or manual checks
 - a quick re-read of the plan to confirm every committed change still maps back to approved scope
 
+If submodules are in scope, verify the right level:
+- run the required checks inside each touched submodule when the task changes submodule code
+- verify the parent repo reflects the intended submodule pointer updates
+- confirm no unrelated submodule pointers changed accidentally
+
 If verification fails, fix the real issue before creating the commit.
 
 Create a focused commit in the worktree.
+
+If submodule content changes are in scope, do not guess the commit shape. Follow the approved plan's commit strategy and keep the submodule commits and parent repo pointer update explicit.
 
 Example only:
 ```bash
@@ -186,6 +217,8 @@ When conflicts happen:
 3. Re-run the relevant verification after the rebase completes.
 4. Update the saved plan only if the final post-rebase implementation materially differs from the approved version.
 
+If submodules are in scope, also confirm the rebased result still points at the intended submodule commits.
+
 Do not treat a conflict-free rebase as proof that the change is still correct.
 
 Remove the worktree only after:
@@ -212,6 +245,10 @@ Before calling this workflow complete, produce:
 - explicit user approval for the post-commit rebase and cleanup steps
 - confirmation that the worktree was removed cleanly
 
+If submodules were involved, also produce:
+- the list of touched submodules
+- confirmation that the final parent repo points at the intended submodule revisions
+
 ## Anti-Patterns
 
 - planning from the main checkout when this workflow applies
@@ -219,6 +256,8 @@ Before calling this workflow complete, produce:
 - implementing before the Momus loop approves the plan
 - saving every draft instead of only the approved plan
 - creating a worktree from a stale `main`
+- ignoring `.gitmodules` or touched submodules during planning
+- editing submodule code without an explicit commit strategy
 - rebasing after the commit without explicit user approval
 - rebasing before the first meaningful commit exists
 - resolving conflicts without re-checking the approved plan
@@ -233,5 +272,7 @@ Stop and ask a targeted question when:
 - the `main` branch assumption appears wrong for this repo
 - the verification command is unknown
 - the critic loop exposes unresolved product decisions
+- the repo has submodules and it is unclear whether the task should modify submodule code, the parent repo pointer, or both
+- the repo has submodules and the required commit order across parent and submodule repos is unclear
 - the user has not yet approved the post-commit rebase and cleanup steps
 - the worktree contains uncommitted changes at cleanup time

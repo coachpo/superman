@@ -14,7 +14,9 @@ Requirement:
 <requirement>
 
 Repository facts:
-- Base branch: <base-branch>
+- Main branch: <main-or-repo-specific-default>
+- Task branch: <branch-name>
+- Worktree path: <worktree-path>
 - Plan path: <plan-path>
 - Worktree helper: <helper-or-none>
 - Verification: <real verification commands or checks>
@@ -29,7 +31,6 @@ Return sections:
 4. Step-by-step implementation
 5. Verification
 6. Risks and rollback
-7. Proposed branch name
 ```
 
 ## Momus Critic Prompt
@@ -97,7 +98,7 @@ Approved
 - Approval date: YYYY-MM-DD
 
 ## Branching
-- Base branch: <base-branch>
+- Main branch: <main-or-repo-specific-default>
 - Implementation branch: <branch-name>
 - Worktree path: <worktree-path>
 ```
@@ -109,4 +110,4 @@ Before calling the plan approved, confirm all of the following:
 - the plan names the expected files, systems, or touch points
 - the verification section proves completion instead of hoping for it
 - the risks and rollback notes are specific enough to use under pressure
-- the branch and worktree intent are recorded before implementation starts
+- the created worktree path and task branch are recorded before implementation starts

@@ -1,15 +1,15 @@
 ---
 name: plan-review-worktree-delivery
-description: Use when a requirement is ready for implementation and you want a gated workflow where @Prometheus drafts the implementation plan, @Momus critiques it until approval, the approved plan is saved in the repository, and the work is implemented in a fresh git worktree, committed, rebased onto the base branch, and cleaned up afterward.
+description: Use when a requirement is ready for implementation and you want every task to begin by creating a git worktree, then have @Prometheus draft the plan, @Momus critique it until approval, save the approved plan in the repository, implement inside that worktree, commit, rebase onto `main`, and clean up the worktree afterward.
 ---
 
 # Plan Review Worktree Delivery
 
 ## Overview
 
-Turn a ready requirement into an approved plan and a clean implementation branch without mixing planning noise into the main checkout.
+Start every qualifying task by isolating it in a worktree, then do the planning and implementation flow from that isolated checkout.
 
-**Core principle:** Draft hard, critique harder, save the approved artifact, then implement in isolation.
+**Core principle:** Isolate first, critique hard, save the approved artifact, then implement against it.
 
 ## OpenCode / OMO Compatibility
 
@@ -33,21 +33,39 @@ Do not use this skill when:
 ## The Iron Law
 
 ```text
-NO IMPLEMENTATION WORKTREE BEFORE MOMUS APPROVES A SAVED PLAN
+CREATE THE WORKTREE FIRST
+IMPLEMENT ONLY AFTER MOMUS APPROVES A SAVED PLAN
 ```
+
+Do not draft the real task plan in the main checkout, and do not implement before the approved plan exists.
 
 If implementation materially changes the approved approach, update the plan and run the Momus review loop again before continuing.
 
-## Step 1: Inspect Repository Facts Before Planning
+## Step 1: Create the Task Worktree First
 
-Before drafting anything, inspect the target repository and determine:
-- the expected base branch (`main`, `master`, or repo-specific default)
-- whether the repo already has a plan directory or naming convention
+Create the worktree before Prometheus drafts anything.
+
+Before creating it, determine:
 - whether the repo already has a worktree helper, wrapper script, or local skill
-- which verification commands actually prove the work is complete
+- whether `main` is the correct base branch for this repo, or whether the repo clearly uses a different default branch
 - whether the current checkout is clean enough to create a worktree safely
+- which verification commands will later prove the work is complete
 
-Prefer local repo conventions over inventing new ones.
+Workflow:
+1. Refresh `main` from the remote unless the repo clearly requires a different base branch.
+2. Choose a task branch name that matches repo conventions.
+3. Use the repo's existing worktree helper if it has one.
+4. Otherwise use native git worktree commands.
+
+Example only:
+```bash
+git fetch origin
+git checkout main
+git pull --ff-only origin main
+git worktree add ../<repo>-<branch-slug> -b <branch-name> main
+```
+
+Record the branch name and worktree path immediately. Prometheus and Momus should review the task with that isolation context already established.
 
 ## Step 2: Ask Prometheus for the Initial Plan
 
@@ -56,6 +74,8 @@ Use `@Prometheus` as the planner role.
 Give Prometheus:
 - the requirement
 - repo facts from Step 1
+- the chosen worktree path
+- the chosen task branch name
 - constraints, deadlines, or non-goals
 - expected verification surfaces
 - any file, API, or architecture clues already known
@@ -70,7 +90,7 @@ Require the plan to include:
 
 Load `references/plan-artifacts.md` for a reusable planner prompt and approved-plan template.
 
-## Step 3: Run the Momus Audit Loop
+## Step 3: Ask Momus to Review and Audit the Plan
 
 Use `@Momus` as the critic role. For higher-risk work, use multiple independent Momus passes instead of one shared critic.
 
@@ -81,6 +101,8 @@ Require every Momus review to return:
 - any scope mismatch between the requirement and the plan
 - concrete revision guidance
 
+## Step 4: Repeat the Revision Cycle Until Momus Approves
+
 Revision loop:
 1. Send the current draft to Momus.
 2. Collect blocking issues only. Do not treat stylistic preferences as blockers.
@@ -89,9 +111,9 @@ Revision loop:
 
 If the loop does not converge after three revision rounds, stop and surface the real decision to the user instead of cycling forever.
 
-## Step 4: Save the Approved Plan to the Repository
+## Step 5: Save the Approved Plan to the Repository
 
-Persist the approved plan before creating a worktree.
+Persist the approved plan in the repository after Momus approves it and before implementation starts.
 
 Plan location order:
 1. Use the repository's existing planning directory if one exists.
@@ -106,31 +128,11 @@ At minimum, the saved plan must capture:
 - verification plan
 - risks and rollback notes
 - approval record
-- intended base branch and worktree branch name
+- the created `main`-based task branch name and worktree path
 
 Use the template in `references/plan-artifacts.md` when the repo does not already define its own plan format.
 
-## Step 5: Create the Implementation Worktree
-
-Create the worktree only after the plan is approved and saved.
-
-Workflow:
-1. Refresh the base branch from the remote.
-2. Create a branch name that matches repo conventions.
-3. Use the repo's existing worktree helper if it has one.
-4. Otherwise use native git worktree commands.
-
-Example only:
-```bash
-git fetch origin
-git checkout <base-branch>
-git pull --ff-only origin <base-branch>
-git worktree add ../<repo>-<branch-slug> -b <branch-name> <base-branch>
-```
-
-Record the chosen branch name and worktree path in the approved plan if they were not known earlier.
-
-## Step 6: Implement Against the Approved Plan
+## Step 6: Implement the Approved Plan in the Worktree
 
 Inside the worktree:
 - use the approved plan as the execution checklist
@@ -141,9 +143,9 @@ Inside the worktree:
 
 Do not silently drift away from the approved plan.
 
-## Step 7: Verify Before Committing
+## Step 7: Commit and Rebase Cleanly
 
-Run the repository-appropriate verification before claiming the work is ready to commit.
+Before creating the commit, run the repository-appropriate verification promised in the approved plan.
 
 Minimum checks:
 - the verification steps promised in the approved plan
@@ -152,16 +154,14 @@ Minimum checks:
 
 If verification fails, fix the real issue before creating the commit.
 
-## Step 8: Commit and Rebase Cleanly
-
-Create a focused commit in the worktree. Then rebase the branch onto the latest base branch.
+Create a focused commit in the worktree. Then rebase the branch onto the latest `main`.
 
 Example only:
 ```bash
 git add <files>
 git commit -m "<type>: <summary>"
 git fetch origin
-git rebase origin/<base-branch>
+git rebase origin/main
 ```
 
 When conflicts happen:
@@ -172,7 +172,7 @@ When conflicts happen:
 
 Do not treat a conflict-free rebase as proof that the change is still correct.
 
-## Step 9: Remove the Worktree After Completion
+## Step 8: Remove the Worktree After Completion
 
 Remove the worktree only after:
 - the implementation commit exists
@@ -199,9 +199,11 @@ Before calling this workflow complete, produce:
 
 ## Anti-Patterns
 
+- planning from the main checkout when this workflow applies
+- creating the worktree late instead of first
 - implementing before the Momus loop approves the plan
 - saving every draft instead of only the approved plan
-- creating a worktree from a stale base branch
+- creating a worktree from a stale `main`
 - rebasing before the first meaningful commit exists
 - resolving conflicts without re-checking the approved plan
 - deleting a worktree that still contains uncommitted changes
@@ -211,7 +213,7 @@ Before calling this workflow complete, produce:
 
 Stop and ask a targeted question when:
 - the requirement is not actually implementation-ready
-- the base branch or repo workflow is unclear
+- the `main` branch assumption appears wrong for this repo
 - the verification command is unknown
 - the critic loop exposes unresolved product decisions
 - the worktree contains uncommitted changes at cleanup time

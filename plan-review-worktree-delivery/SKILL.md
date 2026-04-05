@@ -1,23 +1,38 @@
 ---
 name: plan-review-worktree-delivery
-description: Use when a requirement is ready for implementation and you want every task to begin by creating a git worktree, then have @Prometheus draft the plan, @Momus critique it until approval, save the approved plan in the repository, and implement inside that worktree. Requires a stop point immediately after implementation with a complete report of every exact revision, branch-or-detached state, and worktree used.
+description: Use when a requirement is ready for implementation and you want every task to begin by creating a git worktree, then have @Prometheus draft the plan, @Momus critique it until approval, save the approved plan in the repository, and implement inside that worktree. This skill stops after implementation with a handoff for a later finish flow that rebases only the delivery branch onto a refreshed base ref.
 ---
 
 # Plan Review Worktree Delivery
 
 ## Overview
 
-Start every qualifying task by isolating it in a worktree, then do the planning and implementation flow from that isolated checkout.
+Start every qualifying task by creating a branch-backed delivery worktree from a fresh base ref, then do the planning and implementation flow from that isolated checkout.
 
-**Core principle:** Isolate first, critique hard, save the approved artifact, then implement against it.
+**Core principle:** isolate first, approve the plan before coding, implement only in the delivery worktree, and stop with a handoff that preserves one authoritative base branch plus one delivery branch.
 
 If the repository has submodules or monorepo workspace boundaries, treat them as explicit planning and verification surfaces, not invisible implementation details.
 
 ## OpenCode / OMO Compatibility
 
-This skill owns the sequencing for worktree creation, plan drafting, critic review, plan persistence, implementation, and stop-point reporting. It does not override repository-specific rules for commits, releases, or later cleanup workflows because it stops before those steps.
+This skill owns the sequencing for worktree creation, plan drafting, critic review, plan persistence, implementation, and stop-point reporting. It does not override repository-specific rules for commits, pushes, PRs, releases, or later cleanup workflows because it stops before those steps.
 
 If the environment supports delegation, use a dedicated planner and one or more independent critics. If delegation is unavailable, emulate the same roles locally and keep the outputs clearly separated.
+
+## Working Terms
+
+Use these names consistently:
+- `base branch`: the canonical integration branch for this task, such as `main` or a repo-specific equivalent
+- `base ref`: the refreshed remote-tracking ref or repo-approved equivalent used to create the delivery worktree
+- `delivery branch`: the short-lived task branch created from the base ref and attached to the delivery worktree
+- `delivery worktree`: the isolated checkout used for planning, implementation, and later finish-workflow follow-up
+- `safety ref`: the backup ref format the finish workflow must create before any history rewrite
+
+Default model:
+- the base branch remains authoritative
+- the delivery branch is the only branch rebased in the normal finish flow
+- the base branch is not rebased by these skills
+- real task work does not happen on a detached `HEAD`
 
 ## When to Use
 
@@ -35,18 +50,18 @@ Do not use this skill when:
 ## The Iron Law
 
 ```text
-CREATE THE WORKTREE FIRST
+CREATE THE DELIVERY WORKTREE FIRST
 IMPLEMENT ONLY AFTER MOMUS APPROVES A SAVED PLAN
-STOP AS SOON AS IMPLEMENTATION IS DONE
+STOP WITH A CLEAN HANDOFF FOR ONE-WAY DELIVERY FINALIZATION
 ```
 
-Do not draft the real task plan in the main checkout, do not implement before the approved plan exists, and do not continue into commit, rebase, cleanup, or branch-deletion steps inside this skill.
+Do not draft the real task plan in the main checkout, do not implement before the approved plan exists, and do not continue into commit, rebase, push, PR, release, or cleanup steps inside this skill.
 
 If implementation materially changes the approved approach, update the plan and run the Momus review loop again before continuing.
 
-## Step 1: Create the Task Worktree First
+## Step 1: Create the Delivery Worktree First
 
-Create the worktree before Prometheus drafts anything.
+Create the delivery worktree before Prometheus drafts anything.
 
 Before creating it, determine:
 - whether the repo already has a worktree helper, wrapper script, or local skill
@@ -57,31 +72,36 @@ Before creating it, determine:
 - which verification commands will later prove the work is complete
 
 Workflow:
-1. Refresh the base ref from the remote unless the repo clearly requires a different base branch.
-2. Choose a task branch name that matches repo conventions.
-3. Use the repo's existing worktree helper if it has one, especially if it already handles submodule setup, dependency bootstrap, or environment copying.
-4. Otherwise create the worktree from a fresh remote or repo-approved base ref without switching the caller's active checkout just to refresh that base.
+1. Refresh the base ref from the remote unless the repo clearly requires a different source of truth.
+2. Choose a delivery branch name that matches repo conventions.
+3. Use the repo's existing worktree helper if it already handles submodule setup, dependency bootstrap, or environment copying.
+4. Otherwise create the delivery worktree from the refreshed base ref without switching the caller's active checkout just to refresh that base.
 5. If the repo has submodules, initialize them inside the new worktree before planning against that checkout.
 6. If the repo is a monorepo, run any required bootstrap or install step inside the new worktree before planning against that checkout, and record the exact scoped verification commands you expect to use later.
+7. If the worktree lands on a detached `HEAD`, stop and attach a named delivery branch before planning or coding.
 
 Example only:
 ```bash
 git fetch origin
-git worktree add -b <branch-name> ../<repo>-<branch-slug> origin/<base-branch>
+git worktree add -b <delivery-branch> ../<repo>-<branch-slug> origin/<base-branch>
 cd ../<repo>-<branch-slug>
 git submodule update --init --recursive
 # If the repo is a monorepo, run the repo-approved bootstrap/install step here.
 ```
 
-Record the resolved base ref, branch name, and worktree path immediately.
+Record the following immediately:
+- base branch
+- base ref used for worktree creation
+- base SHA at worktree creation
+- delivery branch
+- delivery worktree path
+- whether the delivery branch is expected to stay local or may later be published
 
 If the repo has submodules, also record:
 - whether the task changes the superproject only, one submodule, or multiple submodules
 - which submodules were initialized in the worktree
-- the exact commit SHA checked out in each initialized or touched submodule
-- whether each submodule is attached to a branch or left on a detached `HEAD`
-- whether the superproject gitlink currently points at that same SHA for each touched submodule
-- whether any submodule-specific branch or worktree is already required
+- for each touched submodule, the expected base branch or base ref, delivery branch, and gitlink outcome
+- whether any repo-specific exception allows a detached submodule state during finish, and why that exception is valid
 
 If the repo is a monorepo, also record:
 - the workspace root in scope
@@ -98,12 +118,14 @@ Use `@Prometheus` as the planner role.
 Give Prometheus:
 - the requirement
 - repo facts from Step 1
-- the resolved base ref
-- the chosen worktree path
-- the chosen task branch name
+- the resolved base branch and base ref
+- the base SHA at worktree creation
+- the chosen delivery worktree path
+- the chosen delivery branch name
+- whether the delivery branch is expected to stay local or may later be published
 - any submodules in scope
 - any monorepo workspace root, packages, or apps in scope
-- any required bootstrap or install step for the new worktree
+- any required bootstrap or install step for the delivery worktree
 - constraints, deadlines, or non-goals
 - expected verification surfaces and exact scoped verification commands
 - any file, API, or architecture clues already known
@@ -111,14 +133,15 @@ Give Prometheus:
 Require the plan to include:
 - goal and scope
 - assumptions and open risks
+- the base-and-delivery branch model
 - file, subsystem, workspace, or package touch points
 - superproject versus submodule responsibilities
 - monorepo workspace or package responsibilities when applicable
 - implementation sequence
 - bootstrap or install expectations for the worktree
 - verification strategy
-- branch, worktree, and exact revision tracking expectations
-- rollback or recovery notes
+- finish workflow contract for later delivery-branch finalization
+- rewrite-safety rules, including backup ref format and rollback path
 
 Load `references/plan-artifacts.md` for a reusable planner prompt and approved-plan template.
 
@@ -131,7 +154,9 @@ Require every Momus review to return:
 - blocking issues
 - hidden risks or missing verification
 - any scope mismatch between the requirement and the plan
-- any missing submodule revision or gitlink handling if the repo uses submodules
+- any attempt to rebase the base branch later
+- any missing rewrite-safety rule, backup ref, or rollback note
+- any missing submodule base-and-delivery mapping if the repo uses submodules
 - any missing monorepo workspace scope, bootstrap, or scoped verification if the repo is a monorepo
 - concrete revision guidance
 
@@ -162,16 +187,18 @@ At minimum, the saved plan must capture:
 - verification plan
 - risks and rollback notes
 - approval record
-- the resolved base ref, created task branch name, and worktree path
+- the resolved base branch, base ref, and base SHA used for worktree creation
+- the created delivery branch name and delivery worktree path
+- whether the delivery branch is expected to stay local or may later be published
 - any monorepo workspace root, packages or apps in scope, and required bootstrap or install steps
-- any submodules in scope, their expected SHA or gitlink state, and how they will be handled
-- the expected final branch, worktree, and revision inventory format
+- any submodules in scope, their expected base-and-delivery mapping, and the intended gitlink outcome
+- the finish workflow contract, including the safety ref format and the rule that only the delivery branch is rebased later
 
 Use the template in `references/plan-artifacts.md` when the repo does not already define its own plan format.
 
-## Step 6: Implement the Approved Plan in the Worktree
+## Step 6: Implement the Approved Plan in the Delivery Worktree
 
-Inside the worktree:
+Inside the delivery worktree:
 - use the approved plan as the execution checklist
 - keep edits scoped to the requirement
 - update the plan if implementation reveals a material change in approach
@@ -187,13 +214,23 @@ If the repo uses submodules:
 - keep the plan explicit about whether you are editing the superproject, submodule contents, or both
 - initialize and inspect submodules before editing them
 - avoid leaving unrelated submodules dirty
-- record every submodule exact revision, branch-or-detached state, gitlink state, and worktree you actually use during implementation
+- treat each touched submodule as its own base-and-delivery workflow surface unless the repository documents a stronger rule
 
 Do not silently drift away from the approved plan.
 
-## Step 7: Stop After Implementation and Report What Was Used
+## Rewrite Safety Rules
 
-When implementation is done, stop inside the worktree workflow. Do not commit, rebase, delete the worktree, delete branches, or move into release flow from this skill.
+Before handing off to the finish workflow, make sure the approved plan already defines:
+- the exact safety ref format the finish workflow must create before any history rewrite
+- the published-branch policy for the delivery branch
+- the rollback path if rebase fails or the branch graph looks wrong
+- whether any repo-specific rule forbids rebasing and would require a different finish workflow entirely
+
+Do not assume later steps can infer these rules from the current checkout.
+
+## Step 7: Stop After Implementation and Produce the Handoff
+
+When implementation is done, stop inside the delivery worktree workflow. Do not commit, rebase, push, delete the worktree, delete branches, or move into release flow from this skill.
 
 Before stopping, run the repository-appropriate verification promised in the approved plan.
 
@@ -205,46 +242,50 @@ Minimum checks:
 
 If submodules are in scope, verify the right level:
 - run the required checks inside each touched submodule when the task changes submodule code
-- confirm the exact SHA in each touched or initialized submodule and whether the superproject gitlink matches it
+- confirm the current commit SHA in each touched submodule
+- confirm the intended gitlink outcome is still documented for the superproject handoff
 - confirm no unrelated submodules were touched accidentally
-- confirm the branch, detached-state, worktree, and revision inventory for submodules is complete
 
 If verification fails, fix the real issue before stopping.
 
-Then produce a stop report that includes every branch, worktree, and exact revision used during the task.
+Then produce a handoff report that gives the later finish workflow everything it needs.
 
-Required stop report fields:
+Required handoff fields:
 - approved plan path
-- resolved base ref used
-- main repo branch used
-- main repo worktree path used
-- any additional main-repo branches or worktrees used
+- base branch
+- base ref used for worktree creation
+- base SHA at worktree creation
+- delivery branch
+- delivery worktree path
+- delivery `HEAD` before finish
+- whether the delivery branch is local-only or already published
+- promised safety ref format
+- verification commands run and their status
 - if the repo is a monorepo:
   - workspace root in scope
   - packages or apps in scope
   - bootstrap or install commands run in the worktree
-- for each submodule used:
+- for each touched submodule:
   - submodule path
+  - base branch or base ref
+  - delivery branch or approved exception
   - exact commit SHA used
-  - branch used or explicit detached `HEAD` state
-  - worktree path used
-  - whether the superproject gitlink points at that SHA
+  - intended gitlink outcome
   - whether it was modified
-- verification commands run and their status
-- explicit statement that the skill stopped before commit, rebase, and cleanup
+- explicit statement that commit, rebase, push, PR, release, and cleanup were not performed by this skill
 
-If no submodule branches, detached states, or extra worktrees were used, say so explicitly instead of omitting the section.
+If no submodule branches or extra worktrees were used, say so explicitly instead of omitting the section.
 
 ## Required Outputs
 
 Before calling this workflow complete, produce:
 - an approved plan file saved in the repository
-- implementation status from the active worktree state
-- verification evidence from the worktree state you are about to leave in place
-- a complete branch/worktree inventory for the main repo
+- implementation status from the active delivery worktree state
+- verification evidence from the delivery worktree state you are about to leave in place
+- a complete base-ref and delivery-branch handoff for the main repo
 - scoped verification evidence for each monorepo package or app in scope when applicable
-- a complete branch, worktree, and revision inventory for every submodule used
-- explicit statement that commit, rebase, and cleanup were not performed by this skill
+- a complete base-and-delivery inventory for every submodule used
+- explicit statement that commit, rebase, push, PR, release, and cleanup were not performed by this skill
 
 ## Anti-Patterns
 
@@ -253,22 +294,25 @@ Before calling this workflow complete, produce:
 - implementing before the Momus loop approves the plan
 - saving every draft instead of only the approved plan
 - creating a worktree from a stale base ref
+- letting the delivery worktree stay on a detached `HEAD`
 - refreshing the base ref by switching the caller's active checkout when a direct fetch plus worktree creation would do
+- planning a finish flow that rebases the base branch
+- planning reciprocal rebases between two branches
+- approving a plan without a backup-ref format or rollback path
 - ignoring `.gitmodules` or touched submodules during planning
 - approving a monorepo plan without naming workspace scope, bootstrap requirements, and scoped verification commands
-- failing to record which branches and worktrees were actually used
-- editing submodule code without recording the exact submodule SHA and whether the superproject gitlink points at it
-- continuing into commit, rebase, or cleanup after implementation is complete
-- leaving the stop report vague about what remains undone
+- defaulting to branch deletion in the later finish flow
+- leaving the handoff vague about which branch is authoritative and which branch is disposable
 
 ## Stop Conditions
 
 Stop and ask a targeted question when:
 - the requirement is not actually implementation-ready
-- the `main` branch assumption appears wrong for this repo
+- the base branch assumption appears wrong for this repo
 - the verification command is unknown
 - the repo is a monorepo and the workspace scope or bootstrap and verification commands are unknown
 - the critic loop exposes unresolved product decisions
-- the repo has submodules and it is unclear whether the task should modify submodule code, the parent repo pointer, or both
-- the repo has submodules and it is unclear which exact submodule SHAs, gitlinks, branches, or detached states were used
-- the branch/worktree inventory is incomplete
+- the repo has submodules and it is unclear which submodule branch model should be used
+- the delivery branch may already be published and the rewrite policy is unclear
+- the later finish flow would need to preserve merge commits or follow a merge-only policy instead of rebase
+- the base-ref and delivery-branch handoff inventory is incomplete

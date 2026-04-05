@@ -14,17 +14,20 @@ Requirement:
 <requirement>
 
 Repository facts:
-- Main branch: <main-or-repo-specific-default>
-- Base ref used for the worktree: <origin/main | repo-approved default>
-- Task branch: <branch-name>
-- Worktree path: <worktree-path>
+- Base branch: <main-or-repo-specific-default>
+- Base ref used for worktree creation: <origin/main | repo-approved remote-tracking ref>
+- Base SHA at worktree creation: <sha>
+- Delivery branch: <branch-name>
+- Delivery worktree path: <worktree-path>
+- Published branch expectation: <local-only | may already exist remotely>
+- Worktree helper: <helper-or-none>
 - Monorepo workspace root: <none | path>
 - Packages or apps in scope: <none | list>
 - Worktree bootstrap or install: <none | exact commands>
 - Submodules in scope: <none | list>
-- Submodule revision expectations: <none | for each submodule: exact SHA or gitlink expectation, branch or detached state>
-- Plan path: <plan-path>
-- Worktree helper: <helper-or-none>
+- Submodule branch expectations: <none | for each submodule: base branch/ref, delivery branch, gitlink expectation>
+- Finish workflow contract: <commit delivery branch, create safety ref, fetch base ref, rebase delivery branch onto refreshed base ref, verify, optionally remove worktree, retain branch>
+- Rewrite safety requirements: <backup ref format, published-branch policy, rollback notes>
 - Verification: <exact scoped verification commands or checks>
 
 Constraints:
@@ -33,11 +36,13 @@ Constraints:
 Return sections:
 1. Goal and scope
 2. Assumptions
-3. Superproject, submodule, and workspace touch points
-4. Step-by-step implementation
-5. Bootstrap and verification
-6. Branch, worktree, and revision tracking
-7. Risks and rollback
+3. Base and delivery branch model
+4. Superproject, submodule, and workspace touch points
+5. Step-by-step implementation
+6. Verification
+7. Finish workflow contract
+8. Rewrite safety
+9. Risks and rollback
 ```
 
 ## Momus Critic Prompt
@@ -46,7 +51,7 @@ Example prompt:
 
 ```text
 You are @Momus (Plan Critic).
-Audit this implementation plan. Approve only if the requirement is fully covered, the sequence is safe, the submodule revision tracking is reproducible, and the verification is specific enough to prove completion at the right workspace or package scope.
+Audit this implementation plan. Approve only if the requirement is fully covered, the workflow keeps the base branch authoritative, the delivery branch is the only rebased branch, the rewrite-safety checkpoints are specific, and the verification is concrete enough to prove completion at the right workspace or package scope.
 
 Requirement:
 <requirement>
@@ -84,11 +89,19 @@ Approved
 ## Assumptions
 - <assumption>
 
+## Base and Delivery Model
+- Base branch: <main-or-repo-specific-default>
+- Base ref used for worktree creation: <origin/main | repo-approved remote-tracking ref>
+- Base SHA at worktree creation: <sha>
+- Delivery branch: <branch-name>
+- Delivery worktree path: <worktree-path>
+- Published branch expectation: <local-only | may already exist remotely>
+
 ## Submodule Scope
 - In scope: <none | list>
 - Superproject-only changes: <yes/no>
 - Submodule content changes: <yes/no, which ones>
-- Expected submodule revision tracking: <none | for each submodule: exact SHA or gitlink expectation, branch or detached state>
+- Expected submodule branch model: <none | for each submodule: base branch/ref, delivery branch, gitlink expectation>
 
 ## Monorepo Scope
 - Workspace root: <none | path>
@@ -105,12 +118,21 @@ Approved
 2. <exact submodule check if applicable>
 3. <manual check if required>
 
-## Branch, Worktree, and Revision Tracking
-- Base ref used for the worktree: <origin/main | repo-approved default>
-- Main repo branch: <branch-name>
-- Main repo worktree: <worktree-path>
-- Additional main repo branches/worktrees: <none | list>
-- Submodule revision tracking required: <yes/no>
+## Finish Workflow Contract
+- Commit on delivery branch before any rebase: <yes>
+- Create safety ref before any history rewrite: <exact ref format>
+- Fetch base ref before rebasing: <exact command or repo helper>
+- Rebase direction: <delivery branch onto refreshed base ref only>
+- Verification after rebase: <exact commands>
+- Worktree cleanup in finish skill: <optional>
+- Branch deletion in finish skill: <no>
+
+## Rewrite Safety
+- Pre-rewrite backup ref name: <ref>
+- Pre-rewrite SHA to preserve: <sha>
+- Branch already published: <yes/no>
+- Allowed rewrite policy if published: <explicit --force-with-lease policy or stop>
+- Rollback notes: <rebase --abort | ORIG_HEAD | reflog>
 
 ## Risks and Rollback
 - Risk: <risk>
@@ -124,10 +146,11 @@ Approved
 - Approval date: YYYY-MM-DD
 
 ## Branching
-- Main branch: <main-or-repo-specific-default>
-- Base ref used for worktree creation: <origin/main | repo-approved default>
-- Implementation branch: <branch-name>
-- Worktree path: <worktree-path>
+- Base branch: <main-or-repo-specific-default>
+- Base ref used for worktree creation: <origin/main | repo-approved remote-tracking ref>
+- Base SHA at worktree creation: <sha>
+- Delivery branch: <branch-name>
+- Delivery worktree path: <worktree-path>
 
 ## Stop Point
 - Stop after implementation: yes
@@ -135,14 +158,18 @@ Approved
 - Rebase in this skill: no
 - Worktree cleanup in this skill: no
 
-## Branch, Worktree, and Revision Inventory
-- Base ref used: <origin/main | repo-approved default>
-- Main repo branch used: <branch-name>
-- Main repo worktree used: <worktree-path>
-- Additional main repo branches/worktrees used: <none | list>
+## Handoff Inventory
+- Base branch: <branch-name>
+- Base ref used: <origin/main | repo-approved remote-tracking ref>
+- Base SHA at worktree creation: <sha>
+- Delivery branch: <branch-name>
+- Delivery worktree path: <worktree-path>
+- Delivery HEAD before finish: <sha>
+- Published branch status: <local-only | already published>
+- Promised safety ref format: <ref pattern>
 - Monorepo scope verified: <none | workspace root and packages/apps>
 - Submodules used:
-  - <submodule-path>: commit <sha>, branch <branch> or detached, worktree <path>, superproject gitlink matches <yes/no>, modified <yes/no>
+  - <submodule-path>: base <branch/ref>, delivery <branch>, commit <sha>, gitlink expectation <sha>, modified <yes/no>
 ```
 
 ## Approval Checklist
@@ -150,12 +177,15 @@ Approved
 Before calling the plan approved, confirm all of the following:
 - the requirement is fully represented in the plan
 - the plan names the expected files, systems, or touch points
-- the plan distinguishes superproject work from submodule work when submodules exist
-- the plan names workspace root and packages or apps in scope when the repo is a monorepo
+- the plan keeps the base branch authoritative and never asks later skills to rebase it
+- the plan names the delivery branch as the only branch that may be rebased in the normal finish flow
+- the plan records the base ref, base SHA, delivery branch, and delivery worktree before implementation starts
 - the verification section proves completion instead of hoping for it
 - the verification section names exact scoped commands instead of only generic repo-root checks
-- the submodule entries record exact revision and gitlink expectations instead of only branch names
+- the rewrite-safety section records an explicit backup ref and rollback path
+- the plan distinguishes local-only delivery branches from already-published delivery branches
+- the submodule entries follow the same one-way base-and-delivery model instead of paired rebases
 - the risks and rollback notes are specific enough to use under pressure
-- the created worktree path and task branch are recorded before implementation starts
 - the plan records the stop point after implementation explicitly
-- the plan records the required branch/worktree inventory instead of leaving it implicit
+- the handoff inventory records the exact fields the finish skill will require
+- the plan does not call for reciprocal rebases or default branch deletion in the finish flow

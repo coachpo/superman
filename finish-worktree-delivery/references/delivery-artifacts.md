@@ -9,26 +9,27 @@ Capture this before the first commit or rebase:
 ```markdown
 ## Handoff Inputs
 - Approved plan path:
-- Earlier stop report available: yes/no
+- Earlier handoff report available: yes/no
 - Repository root:
-- Branch mapping source: stop report | approved plan + worktree inventory | explicit user confirmation
-- Surviving branch:
-- Surviving branch path:
-- Surviving branch starting SHA:
-- Surviving branch upstream ref:
+- Base branch:
+- Base ref:
+- Base SHA from handoff:
 - Delivery branch:
 - Delivery worktree path:
 - Delivery branch starting SHA:
-- Current checkout role: surviving branch checkout | delivery worktree | other
+- Delivery branch published status: local-only | already published
+- Safety ref to create before rewrite:
+- Current checkout role: delivery worktree | other
 - Touched submodules: none | list
 - Verification commands to rerun:
 - Cleanup helper: none | exact helper
 ```
 
 Example mapping:
-- Surviving branch: `main`
+- Base branch: `main`
+- Base ref: `origin/main`
 - Delivery branch: `feat/provider-endpoint-redesign`
-- Cleanup target branch: `feat/provider-endpoint-redesign`
+- Delivery worktree path: `../repo-feat-provider-endpoint-redesign`
 
 Useful commands:
 
@@ -37,6 +38,7 @@ git branch --show-current
 git status --short
 git worktree list --porcelain
 git rev-parse HEAD
+git rev-parse origin/<base-branch>
 ```
 
 ## Commit Record
@@ -45,13 +47,14 @@ Use this when the handoff creates one or more commits before rebasing:
 
 ```markdown
 ## Commit Record
-- Superproject commit:
+- Delivery branch commit before rebase:
 - Submodule commits:
-  - <path>: <sha> on <branch-or-detached-state> | detached delivery approved: yes/no
+  - <path>: <sha> on <delivery-branch> | approved exception <reason>
+- Superproject gitlink refresh commit:
 - Commit message summary:
 ```
 
-If submodules changed, record the submodule commit before you record the superproject gitlink commit.
+If submodules changed, finish each touched submodule first, then record the superproject gitlink update that points at those finished SHAs.
 
 ## Conflict Notes
 
@@ -59,10 +62,13 @@ When conflicts happen, record only the facts that matter later:
 
 ```markdown
 ## Conflict Notes
-- Rebase step: surviving-onto-delivery | delivery-onto-surviving
+- Rebase step: delivery-onto-base | submodule-delivery-onto-base
 - Files or gitlinks in conflict:
 - Resolution summary:
 - Verification rerun after resolution:
+- Rebase aborted: yes/no
+- ORIG_HEAD used: yes/no
+- Reflog recovery needed: yes/no
 ```
 
 For submodule gitlink conflicts, record both candidate SHAs and the final chosen SHA.
@@ -74,22 +80,28 @@ For submodule gitlink conflicts, record both candidate SHAs and the final chosen
 
 ## Inputs
 - Approved plan path:
-- Surviving branch:
+- Base branch:
+- Base ref:
 - Delivery branch:
 - Delivery worktree path:
 
+## Safety and Rewrite
+- Safety ref created:
+- Delivery SHA before rebase:
+- Refreshed base SHA before rebase:
+- Delivery branch published status:
+- Publication rule if later pushed: force-with-lease | local-only | stop required
+
 ## Commits Created
-- Superproject:
+- Delivery branch commit before rebase:
 - Submodules:
+- Superproject gitlink refresh commit:
 
 ## Rebase Results
-- Upstream ref pulled for surviving branch:
-- Surviving branch SHA after pull:
-- Surviving branch final SHA:
-- Delivery branch final SHA before deletion:
-- Surviving branch rebased onto delivery branch: yes/no
-- Delivery branch rebased onto surviving branch: yes/no
+- Delivery branch rebased onto refreshed base ref: yes/no
+- Delivery branch final SHA:
 - Conflicts resolved: none | summary
+- Rollback used: none | rebase --abort | ORIG_HEAD | reflog
 
 ## Verification
 1. <command> - pass/fail
@@ -97,10 +109,12 @@ For submodule gitlink conflicts, record both candidate SHAs and the final chosen
 
 ## Cleanup
 - Delivery worktree removed: yes/no
-- Delivery branch deleted: yes/no
+- Delivery branch retained: yes/no
 - Helper used: none | exact helper
 
 ## Explicit Non-Goals
+- Base branch rewritten: no
+- Branch deleted in this skill: no
 - Push performed: yes/no
 - PR performed: yes/no
 - Release or deployment performed: yes/no

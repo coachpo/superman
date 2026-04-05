@@ -14,6 +14,7 @@ Capture this before the first commit or rebase:
 - Surviving branch:
 - Surviving branch path:
 - Surviving branch starting SHA:
+- Surviving branch upstream ref:
 - Delivery branch:
 - Delivery worktree path:
 - Delivery branch starting SHA:
@@ -75,6 +76,8 @@ For submodule gitlink conflicts, record both candidate SHAs and the final chosen
 - Submodules:
 
 ## Rebase Results
+- Upstream ref pulled for surviving branch:
+- Surviving branch SHA after pull:
 - Surviving branch final SHA:
 - Delivery branch final SHA before deletion:
 - Surviving branch rebased onto delivery branch: yes/no

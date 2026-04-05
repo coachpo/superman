@@ -1,4 +1,4 @@
 interface:
   display_name: "Finish Worktree Delivery"
   short_description: "Commit, rebase, and clean up worktree delivery"
-  default_prompt: "Use $finish-worktree-delivery to finalize a completed worktree implementation by committing, rebasing, and cleaning it up."
+  default_prompt: "Use $finish-worktree-delivery to finalize a completed worktree implementation by committing, pulling latest upstream HEAD, rebasing, and cleaning it up."

@@ -1,15 +1,15 @@
 ---
 name: finish-worktree-delivery
-description: "Use when `plan-review-worktree-delivery` has already stopped after implementation and you now want the follow-up git flow: commit the completed work on the intended feature or fix branches, rebase the current HEAD branch onto the corresponding delivery worktree branch, resolve conflicts, rebase the delivery worktree branch onto the updated HEAD branch, and then clean up the finished worktree and its temporary branch."
+description: "Use when `plan-review-worktree-delivery` has already stopped after implementation and you now want the follow-up git flow: commit the completed work on the intended feature or fix branches, pull the latest upstream state for the current HEAD branch, rebase that current HEAD branch onto the corresponding delivery worktree branch, resolve conflicts, rebase the delivery worktree branch onto the updated HEAD branch, and then clean up the finished worktree and its temporary branch."
 ---
 
 # Finish Worktree Delivery
 
 ## Overview
 
-Finish a completed implementation worktree by committing the actual work, synchronizing the long-lived branch and the temporary delivery branch in the requested order, and cleaning up only after both sides line up.
+Finish a completed implementation worktree by committing the actual work, refreshing the long-lived branch from its upstream HEAD, synchronizing it with the temporary delivery branch in the requested order, and cleaning up only after both sides line up.
 
-**Core principle:** Commit first, update the branch that must survive, mirror the temporary delivery branch to that updated branch, then remove only the temporary worktree and branch.
+**Core principle:** Commit first, refresh the branch that must survive from its upstream HEAD, rebase it onto the delivery branch, mirror the temporary delivery branch to that updated branch, then remove only the temporary worktree and branch.
 
 This skill starts where `plan-review-worktree-delivery` stops.
 
@@ -45,6 +45,7 @@ Before committing or rebasing, identify and record:
 - the approved plan path and stop report from `plan-review-worktree-delivery`, if available
 - the repository root
 - the `surviving branch` name, path, and current `HEAD`
+- the upstream remote and tracking ref for the `surviving branch`
 - the `delivery branch` name, `delivery worktree` path, and current `HEAD`
 - whether either side is detached, unborn, or already rebasing
 - whether the repository has a helper or local skill for worktree cleanup
@@ -61,12 +62,14 @@ git status --short
 git worktree list --porcelain
 git rev-parse HEAD
 git rev-parse <branch-name>
+git rev-parse --abbrev-ref <branch-name>@{upstream}
 ```
 
 Do not proceed if:
 - the branch mapping is ambiguous
 - the `surviving branch` is detached
 - the `delivery branch` is detached and the repository did not explicitly plan for that
+- the `surviving branch` should be refreshed from upstream but no upstream tracking ref is configured and the repository does not document an alternative
 - unrelated changes in the `surviving branch` checkout would get mixed into the handoff
 
 ## Step 2: Commit the Delivery Work on the Intended Branches
@@ -87,22 +90,29 @@ If submodules were edited:
 
 Do not start rebasing with uncommitted delivery changes still present.
 
-## Step 3: Rebase the Surviving Branch Onto the Delivery Branch
+## Step 3: Pull the Latest Upstream HEAD and Rebase the Surviving Branch Onto the Delivery Branch
 
-Move to the checkout that owns the `surviving branch` and rebase it onto the committed `delivery branch`.
+Move to the checkout that owns the `surviving branch`, refresh it from its latest upstream HEAD using the repository's normal non-destructive sync flow, and then rebase it onto the committed `delivery branch`.
+
+Minimum expectations:
+- sync the `surviving branch` with its tracked upstream before rebasing it onto the delivery branch
+- use the repository's normal `pull --rebase` or equivalent fetch-plus-rebase flow instead of a destructive reset
+- record the upstream ref used and the post-pull SHA before starting the rebase
 
 Example only:
 
 ```bash
 git checkout <surviving-branch>
+git pull --rebase
 git rebase <delivery-branch>
 ```
 
 During conflict resolution:
+- resolve upstream pull conflicts before beginning the branch-to-branch rebase
 - resolve conflicts in favor of the intended final code, not by blindly taking one side
 - rerun the narrowest promised verification after meaningful conflict resolution
 - if a submodule gitlink conflicts, inspect the intended submodule commit directly instead of choosing a SHA by guesswork
-- record whether the rebase rewrote commits and what final SHA the `surviving branch` now points to
+- record whether the pull or rebase rewrote commits and what final SHA the `surviving branch` now points to
 
 This is the branch that survives cleanup, so make the hard conflict decisions here.
 
@@ -127,6 +137,7 @@ If this step is a no-op because both branches already point at the same commit, 
 ## Step 5: Verify the Final State Before Cleanup
 
 Before removing anything, gather fresh evidence for:
+- the upstream ref pulled for the `surviving branch`
 - the final `surviving branch` SHA
 - the final `delivery branch` SHA
 - whether the `delivery branch` tip is identical to, or fully contained in, the `surviving branch`
@@ -176,6 +187,7 @@ Do not:
 
 Before calling this workflow complete, report:
 - approved plan path, if known
+- upstream ref pulled for the `surviving branch`
 - `surviving branch` name, path, and final SHA
 - `delivery branch` name, worktree path, and final SHA before deletion
 - commit SHAs created during the handoff
@@ -188,7 +200,7 @@ Before calling this workflow complete, report:
 
 1. Treat the named branch in the caller's current checkout as the `surviving branch` unless the repository clearly says otherwise.
 2. Commit the delivery work before any rebase.
-3. Rebase the `surviving branch` onto the `delivery branch` first.
+3. Pull the latest upstream state for the `surviving branch` before rebasing it onto the `delivery branch`.
 4. Rebase the `delivery branch` onto the updated `surviving branch` second.
 5. Verify with exact SHAs before cleanup.
 6. Clean up only the temporary delivery worktree and branch.
@@ -197,6 +209,7 @@ Before calling this workflow complete, report:
 ## Anti-Patterns
 
 - rebasing before the delivery work is committed
+- rebasing the `surviving branch` onto the delivery branch before refreshing it from upstream HEAD
 - making conflict decisions in the temporary branch first and hoping the surviving branch works out later
 - deleting the worktree before the final branch relationship is proven
 - force-deleting the temporary branch without checking whether the surviving branch contains its work
@@ -208,6 +221,7 @@ Before calling this workflow complete, report:
 Stop and ask a targeted question when:
 - either side that must survive the workflow is detached
 - the branch-to-worktree mapping is unclear
+- the `surviving branch` has no upstream tracking branch and the correct source for the latest HEAD is unclear
 - the repository requires merge, cherry-pick, or squash delivery instead of rebase
 - the `surviving branch` checkout contains unrelated local changes and it is unclear whether they belong in scope
 - cleanup would require force and you cannot prove the unique work is already preserved elsewhere
@@ -216,6 +230,7 @@ Stop and ask a targeted question when:
 
 - Start from the earlier stop report when one exists
 - Commit in the delivery worktree first
+- Pull the latest upstream HEAD for the surviving branch
 - Rebase the surviving branch onto the delivery branch
 - Rebase the delivery branch onto the updated surviving branch
 - Verify exact SHAs

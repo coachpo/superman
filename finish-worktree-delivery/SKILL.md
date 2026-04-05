@@ -39,6 +39,11 @@ Default assumption:
 
 If the repository or user intent clearly says the opposite, stop and confirm before rebasing anything.
 
+Concrete example:
+- `surviving branch`: `main`
+- `delivery branch`: `feat/provider-endpoint-redesign`
+- required sequence: pull latest `main`, rebase `main` onto `feat/provider-endpoint-redesign`, resolve conflicts, rebase `feat/provider-endpoint-redesign` onto the updated `main`, then delete `feat/provider-endpoint-redesign`
+
 ## Step 1: Inspect the Handoff Before Any Git Side Effects
 
 Before committing or rebasing, identify and record:
@@ -107,6 +112,14 @@ git pull --rebase
 git rebase <delivery-branch>
 ```
 
+Concrete example:
+
+```bash
+git checkout main
+git pull --rebase
+git rebase feat/provider-endpoint-redesign
+```
+
 During conflict resolution:
 - resolve upstream pull conflicts before beginning the branch-to-branch rebase
 - resolve conflicts in favor of the intended final code, not by blindly taking one side
@@ -125,6 +138,13 @@ Example only:
 ```bash
 git checkout <delivery-branch>
 git rebase <surviving-branch>
+```
+
+Concrete example:
+
+```bash
+git checkout feat/provider-endpoint-redesign
+git rebase main
 ```
 
 Purpose:
@@ -176,6 +196,13 @@ git worktree remove <delivery-worktree-path>
 git branch -d <delivery-branch>
 ```
 
+Concrete example:
+
+```bash
+git worktree remove ../<repo>-feat-provider-endpoint-redesign
+git branch -d feat/provider-endpoint-redesign
+```
+
 Use force only when the repository already expects it and you have verified no unique work will be lost.
 
 Do not:
@@ -205,6 +232,7 @@ Before calling this workflow complete, report:
 5. Verify with exact SHAs before cleanup.
 6. Clean up only the temporary delivery worktree and branch.
 7. Handle submodule commits and gitlinks explicitly when submodules changed.
+8. In the concrete example `main` survives while `feat/provider-endpoint-redesign` is deleted after the second rebase.
 
 ## Anti-Patterns
 
@@ -233,5 +261,6 @@ Stop and ask a targeted question when:
 - Pull the latest upstream HEAD for the surviving branch
 - Rebase the surviving branch onto the delivery branch
 - Rebase the delivery branch onto the updated surviving branch
+- If the example mapping is `main` and `feat/provider-endpoint-redesign`, delete only `feat/provider-endpoint-redesign`
 - Verify exact SHAs
 - Remove only the temporary worktree and branch

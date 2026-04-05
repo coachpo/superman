@@ -23,6 +23,11 @@ Capture this before the first commit or rebase:
 - Cleanup helper: none | exact helper
 ```
 
+Example mapping:
+- Surviving branch: `main`
+- Delivery branch: `feat/provider-endpoint-redesign`
+- Cleanup target branch: `feat/provider-endpoint-redesign`
+
 Useful commands:
 
 ```bash

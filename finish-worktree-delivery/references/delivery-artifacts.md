@@ -11,6 +11,7 @@ Capture this before the first commit or rebase:
 - Approved plan path:
 - Earlier stop report available: yes/no
 - Repository root:
+- Branch mapping source: stop report | approved plan + worktree inventory | explicit user confirmation
 - Surviving branch:
 - Surviving branch path:
 - Surviving branch starting SHA:
@@ -18,6 +19,7 @@ Capture this before the first commit or rebase:
 - Delivery branch:
 - Delivery worktree path:
 - Delivery branch starting SHA:
+- Current checkout role: surviving branch checkout | delivery worktree | other
 - Touched submodules: none | list
 - Verification commands to rerun:
 - Cleanup helper: none | exact helper
@@ -45,7 +47,7 @@ Use this when the handoff creates one or more commits before rebasing:
 ## Commit Record
 - Superproject commit:
 - Submodule commits:
-  - <path>: <sha> on <branch-or-detached-state>
+  - <path>: <sha> on <branch-or-detached-state> | detached delivery approved: yes/no
 - Commit message summary:
 ```
 

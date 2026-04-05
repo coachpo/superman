@@ -28,16 +28,21 @@ If the repository already has a stronger helper for worktree cleanup or branch d
 ## Working Terms
 
 Use these names consistently:
-- `surviving branch`: the named branch checked out in the caller's current checkout when this skill begins. This branch stays after cleanup.
+- `surviving branch`: the branch recorded as the long-lived branch in the earlier stop report, approved plan, or verified worktree inventory. This branch stays after cleanup.
 - `delivery branch`: the named branch checked out in the implementation worktree created for the completed task. This branch is temporary unless the repository clearly says otherwise.
 - `delivery worktree`: the worktree path that contains the completed implementation.
 - `corresponding branches`: the branch pair for the main repository, plus any in-scope submodule branch pairs when submodule code changed.
 
+Preferred source of truth for the branch mapping:
+1. the earlier stop report from `plan-review-worktree-delivery`
+2. the approved plan plus the recorded worktree inventory
+3. the current checkout only when it clearly matches that recorded inventory and is not just the delivery worktree you are standing in
+
 Default assumption:
-- the `surviving branch` is the branch the user wants to keep
+- the `surviving branch` is the branch the user wants to keep after cleanup
 - the `delivery branch` is the branch the user wants to remove after the handoff
 
-If the repository or user intent clearly says the opposite, stop and confirm before rebasing anything.
+If the current checkout disagrees with the earlier stop report, trust the recorded handoff artifacts first and stop to confirm before rebasing anything.
 
 Concrete example:
 - `surviving branch`: `main`
@@ -49,9 +54,11 @@ Concrete example:
 Before committing or rebasing, identify and record:
 - the approved plan path and stop report from `plan-review-worktree-delivery`, if available
 - the repository root
+- which artifact establishes the branch mapping for this handoff
 - the `surviving branch` name, path, and current `HEAD`
 - the upstream remote and tracking ref for the `surviving branch`
 - the `delivery branch` name, `delivery worktree` path, and current `HEAD`
+- whether the current checkout is the `delivery worktree`, the `surviving branch` checkout, or something else
 - whether either side is detached, unborn, or already rebasing
 - whether the repository has a helper or local skill for worktree cleanup
 - whether submodules were edited and, if so, which branch or detached state each one is using
@@ -72,6 +79,7 @@ git rev-parse --abbrev-ref <branch-name>@{upstream}
 
 Do not proceed if:
 - the branch mapping is ambiguous
+- the current checkout alone is the only evidence for which branch should survive
 - the `surviving branch` is detached
 - the `delivery branch` is detached and the repository did not explicitly plan for that
 - the `surviving branch` should be refreshed from upstream but no upstream tracking ref is configured and the repository does not document an alternative
@@ -88,10 +96,12 @@ Rules:
 - record the resulting commit SHA for every repo surface you commit
 
 If submodules were edited:
-1. Commit each touched submodule on its intended feature or fix branch first.
-2. Return to the superproject in the `delivery worktree`.
-3. Stage the updated gitlinks together with any superproject file changes.
-4. Create the superproject commit that records those exact submodule commits.
+1. Commit or record each touched submodule from its intended delivery state first.
+2. Use a feature or fix branch when the repository expects attached submodule delivery.
+3. If the repository intentionally delivers a pinned detached submodule commit, do not invent a branch just for this handoff. Record the detached state, exact SHA, and why detached delivery is valid for this repository.
+4. Return to the superproject in the `delivery worktree`.
+5. Stage the updated gitlinks together with any superproject file changes.
+6. Create the superproject commit that records those exact submodule commits.
 
 Do not start rebasing with uncommitted delivery changes still present.
 
@@ -225,7 +235,7 @@ Before calling this workflow complete, report:
 
 ## Core Rules
 
-1. Treat the named branch in the caller's current checkout as the `surviving branch` unless the repository clearly says otherwise.
+1. Derive the `surviving branch` from the earlier stop report or verified worktree inventory first, and use the current checkout only as a confirmed fallback.
 2. Commit the delivery work before any rebase.
 3. Pull the latest upstream state for the `surviving branch` before rebasing it onto the `delivery branch`.
 4. Rebase the `delivery branch` onto the updated `surviving branch` second.
@@ -249,6 +259,7 @@ Before calling this workflow complete, report:
 Stop and ask a targeted question when:
 - either side that must survive the workflow is detached
 - the branch-to-worktree mapping is unclear
+- the earlier stop report is missing and the worktree inventory still does not prove which branch should survive
 - the `surviving branch` has no upstream tracking branch and the correct source for the latest HEAD is unclear
 - the repository requires merge, cherry-pick, or squash delivery instead of rebase
 - the `surviving branch` checkout contains unrelated local changes and it is unclear whether they belong in scope
@@ -257,6 +268,7 @@ Stop and ask a targeted question when:
 ## Remember
 
 - Start from the earlier stop report when one exists
+- Use the stop report or worktree inventory to decide which branch survives
 - Commit in the delivery worktree first
 - Pull the latest upstream HEAD for the surviving branch
 - Rebase the surviving branch onto the delivery branch

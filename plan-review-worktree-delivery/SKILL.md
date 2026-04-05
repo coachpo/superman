@@ -1,6 +1,6 @@
 ---
 name: plan-review-worktree-delivery
-description: Use when a requirement is ready for implementation and you want every task to begin by creating a git worktree, then have @Prometheus draft the plan, @Momus critique it until approval, save the approved plan in the repository, and implement inside that worktree. Supports repositories with or without git submodules, including submodule-aware planning, submodule initialization in the worktree, and a required stop point immediately after implementation with a complete report of every exact revision, branch-or-detached state, and worktree used.
+description: Use when a requirement is ready for implementation and you want every task to begin by creating a git worktree, then have @Prometheus draft the plan, @Momus critique it until approval, save the approved plan in the repository, and implement inside that worktree. Requires a stop point immediately after implementation with a complete report of every exact revision, branch-or-detached state, and worktree used.
 ---
 
 # Plan Review Worktree Delivery

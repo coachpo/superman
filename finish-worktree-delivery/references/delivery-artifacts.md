@@ -19,9 +19,9 @@ Capture this before the first commit or rebase:
 - Delivery branch starting SHA:
 - Delivery branch published status: local-only | already published
 - Safety ref to create before rewrite:
-- Current checkout role: delivery worktree | other
-- Touched submodules: none | list
+- Local base checkout or branch owner for fast-forward:
 - Verification commands to rerun:
+- Base push policy note:
 - Cleanup helper: none | exact helper
 ```
 
@@ -48,13 +48,8 @@ Use this when the handoff creates one or more commits before rebasing:
 ```markdown
 ## Commit Record
 - Delivery branch commit before rebase:
-- Submodule commits:
-  - <path>: <sha> on <delivery-branch> | approved exception <reason>
-- Superproject gitlink refresh commit:
 - Commit message summary:
 ```
-
-If submodules changed, finish each touched submodule first, then record the superproject gitlink update that points at those finished SHAs.
 
 ## Conflict Notes
 
@@ -62,16 +57,14 @@ When conflicts happen, record only the facts that matter later:
 
 ```markdown
 ## Conflict Notes
-- Rebase step: delivery-onto-base | submodule-delivery-onto-base
-- Files or gitlinks in conflict:
+- Rebase step: delivery-onto-base
+- Files in conflict:
 - Resolution summary:
 - Verification rerun after resolution:
 - Rebase aborted: yes/no
 - ORIG_HEAD used: yes/no
 - Reflog recovery needed: yes/no
 ```
-
-For submodule gitlink conflicts, record both candidate SHAs and the final chosen SHA.
 
 ## Final Follow-Up Report
 
@@ -89,33 +82,32 @@ For submodule gitlink conflicts, record both candidate SHAs and the final chosen
 - Safety ref created:
 - Delivery SHA before rebase:
 - Refreshed base SHA before rebase:
+- Delivery SHA after rebase:
 - Delivery branch published status:
-- Publication rule if later pushed: force-with-lease | local-only | stop required
 
-## Commits Created
-- Delivery branch commit before rebase:
-- Submodules:
-- Superproject gitlink refresh commit:
-
-## Rebase Results
-- Delivery branch rebased onto refreshed base ref: yes/no
-- Delivery branch final SHA:
-- Conflicts resolved: none | summary
-- Rollback used: none | rebase --abort | ORIG_HEAD | reflog
+## Local Base Fast-Forward
+- Local base checkout or branch owner used:
+- Local base SHA before fast-forward:
+- Local base SHA after fast-forward:
+- Fast-forward mode used: ff-only | equivalent safe helper
 
 ## Verification
 1. <command> - pass/fail
 2. <command> - pass/fail
 
+## Publication
+- Push requested: yes/no
+- Push allowed by repo policy: yes/no
+- Push performed: yes/no
+
 ## Cleanup
 - Delivery worktree removed: yes/no
-- Delivery branch retained: yes/no
+- Delivery branch deleted: yes/no
 - Helper used: none | exact helper
 
 ## Explicit Non-Goals
-- Base branch rewritten: no
-- Branch deleted in this skill: no
-- Push performed: yes/no
+- Base branch rebased: no
+- Merge commit used for base update: no
 - PR performed: yes/no
 - Release or deployment performed: yes/no
 ```

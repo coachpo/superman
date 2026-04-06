@@ -1,29 +1,29 @@
 ---
 name: finish-worktree-delivery
-description: "Use when `plan-review-worktree-delivery` has already stopped after implementation and you now want the follow-up git flow: commit the delivery branch, create a safety ref, refresh the base ref, rebase the delivery branch onto that refreshed base ref, verify the result, and optionally remove the delivery worktree while keeping the delivery branch for later integration."
+description: "Use when `plan-review-worktree-delivery` has already stopped after implementation and you now want the follow-up git flow: commit the delivery branch, create a safety ref, refresh the base ref, rebase the delivery branch onto that refreshed base ref, verify the result, fast-forward the local base branch, optionally push the base branch when explicitly requested and allowed, and clean up the temporary delivery worktree and branch."
 ---
 
 # Finish Worktree Delivery
 
 ## Overview
 
-Finish a completed implementation worktree by committing the actual work on the delivery branch, preserving a recovery point, refreshing the base ref, rebasing the delivery branch onto that base ref, verifying the result, and cleaning up only the worktree if the branch is ready to keep for later integration.
+Finish a completed implementation worktree by committing the actual work on the delivery branch, preserving a recovery point, refreshing the base ref, rebasing the delivery branch onto that base ref, verifying the rebased result, fast-forwarding the local base branch to that verified delivery commit, optionally pushing the base branch when explicitly requested and allowed, and then cleaning up the temporary delivery artifacts.
 
-**Core principle:** keep the base branch authoritative, rebase only the delivery branch, create a safety ref before rewriting history, and do not delete the branch as part of the normal finish flow.
+**Core principle:** keep the base branch authoritative, rebase only the delivery branch, update the local base branch only by fast-forward semantics, and never default to pushing or keeping the delivery branch as the final state.
 
 This skill starts where `plan-review-worktree-delivery` stops.
 
 ## OpenCode / OMO Compatibility
 
-This skill owns the post-implementation git follow-up only: commit, safety-ref creation, delivery-branch rebase, conflict resolution, verification, and optional worktree cleanup.
+This skill owns the post-implementation git follow-up only: commit, safety-ref creation, delivery-branch rebase, verification, local base fast-forward, optional base push, and cleanup.
 
 It does not override repository rules for:
 - commit message policy
 - protected branches
 - merge-only or squash-only delivery policies
-- push, PR, release, or deployment steps
+- PR, release, or deployment steps
 
-If the repository already has a stronger helper for worktree cleanup or branch delivery, use it only when it preserves the same one-way sequence and outcome.
+If the repository already has a stronger helper for worktree cleanup or base-branch delivery, use it only when it preserves the same one-way sequence and outcome.
 
 ## Working Terms
 
@@ -41,14 +41,15 @@ Preferred source of truth for the mapping:
 
 Default assumption:
 - the base branch remains authoritative and is not rewritten by this skill
-- the delivery branch is short-lived but retained after this skill unless a later, explicit cleanup step removes it
-- the delivery worktree is optional to keep after verification; the branch is not
+- the delivery branch is temporary and is deleted after the verified local base fast-forward
+- the delivery worktree is temporary and is removed during cleanup
+- pushing the base branch is optional and requires explicit request plus repo-policy approval
 
 Concrete example:
 - base branch: `main`
 - base ref: `origin/main`
 - delivery branch: `feat/provider-endpoint-redesign`
-- required sequence: commit `feat/provider-endpoint-redesign`, create a safety ref, fetch `origin/main`, rebase `feat/provider-endpoint-redesign` onto `origin/main`, verify, optionally remove the delivery worktree, keep `feat/provider-endpoint-redesign`
+- required sequence: commit `feat/provider-endpoint-redesign`, create a safety ref, fetch `origin/main`, rebase `feat/provider-endpoint-redesign` onto `origin/main`, verify, fast-forward local `main` to the verified delivery commit, optionally push `main`, then remove `feat/provider-endpoint-redesign` artifacts
 
 ## Step 1: Inspect the Handoff Before Any Git Side Effects
 
@@ -58,13 +59,13 @@ Before committing or rebasing, identify and record:
 - which artifact establishes the base and delivery mapping for this handoff
 - the base branch name, base ref, and base SHA from the earlier handoff
 - the delivery branch name, delivery worktree path, and current `HEAD`
-- whether the current checkout is the delivery worktree or something else
 - whether the delivery branch is local-only or already published
 - the safety ref format expected by the approved plan
+- which clean local checkout or repo-approved owner will fast-forward the base branch later
 - whether the delivery branch is detached, unborn, or already rebasing
 - whether the repository has a helper or local skill for worktree cleanup
-- whether submodules were edited and, if so, which base-and-delivery mapping each one is using
 - the exact verification commands that were promised before the earlier skill stopped
+- whether repo policy allows an explicit base-branch push after verification
 
 Load `references/delivery-artifacts.md` when you need a reusable preflight checklist or final report template.
 
@@ -84,31 +85,11 @@ Do not proceed if:
 - the delivery branch is detached
 - the base ref is unclear or stale
 - the delivery branch is already published and the later rewrite policy is unclear
+- there is no clean local checkout or repo-approved owner available to fast-forward the base branch
 - unrelated local changes would get mixed into the handoff
-- a merge-only or squash-only repo policy means this rebase-based skill is the wrong tool
+- a merge-only or squash-only repo policy means this rebase-plus-fast-forward skill is the wrong tool
 
-## Step 2: Finalize Touched Submodules First When They Changed
-
-If the task changed submodule code, finish each touched submodule before rebasing the superproject delivery branch.
-
-Per touched submodule:
-1. Confirm the submodule base branch, base ref, delivery branch, and intended gitlink outcome from the earlier handoff.
-2. Commit the intended submodule changes on the submodule delivery branch.
-3. Record the submodule pre-rewrite SHA.
-4. Create the submodule safety ref.
-5. Refresh the submodule base ref.
-6. Rebase the submodule delivery branch onto the refreshed submodule base ref.
-7. Rerun the promised submodule verification.
-
-After finishing the touched submodules:
-- return to the superproject delivery worktree
-- update the gitlinks to the finished submodule SHAs
-- stage the updated gitlinks together with any related superproject file changes
-- create or refresh the superproject delivery-branch commit so it records those exact submodule SHAs
-
-If the repository explicitly allows a detached submodule state, record the exact exception, the exact SHA, and why detached delivery is valid here.
-
-## Step 3: Commit the Delivery Branch Before Any Rebase
+## Step 2: Commit the Delivery Branch Before Any Rebase
 
 Commit the completed implementation before any history rewrite.
 
@@ -116,13 +97,11 @@ Rules:
 - commit inside the delivery worktree
 - stage only the intended task changes
 - follow the repository's normal commit message style
-- record the resulting commit SHA for every repo surface you commit
-
-If submodule code did not change, create the delivery-branch commit now.
+- record the resulting delivery-branch commit SHA
 
 Do not start rebasing with uncommitted delivery changes still present.
 
-## Step 4: Create the Safety Ref and Refresh the Base Ref
+## Step 3: Create the Safety Ref and Refresh the Base Ref
 
 Preserve a recovery point before rewriting history.
 
@@ -140,9 +119,9 @@ git fetch origin
 git rev-parse origin/<base-branch>
 ```
 
-If the delivery branch is already published, continue only when the approved plan or repository policy explicitly allows a later `--force-with-lease` publication. If that rule is absent, stop.
+If the delivery branch is already published, continue only when the approved plan or repository policy explicitly allows this rewrite-based finish flow. If that rule is absent, stop.
 
-## Step 5: Rebase the Delivery Branch Onto the Refreshed Base Ref
+## Step 4: Rebase the Delivery Branch Onto the Refreshed Base Ref
 
 Rebase only the delivery branch.
 
@@ -161,15 +140,14 @@ git rebase origin/main
 During conflict resolution:
 - resolve conflicts on the delivery branch only
 - rerun the narrowest promised verification after meaningful conflict resolution
-- if a submodule gitlink conflicts, inspect the candidate SHAs directly instead of choosing by guesswork
 - record whether the rebase completed cleanly, was aborted, or needed `ORIG_HEAD` or reflog-based recovery
-- if the branch graph no longer matches the intended one-way model, stop instead of improvising a second rebase
+- if the branch graph no longer matches the intended one-way model, stop instead of improvising a second rebase or a merge commit
 
 This skill does not rebase the base branch and does not perform reciprocal branch alignment.
 
-## Step 6: Verify the Final State Before Cleanup
+## Step 5: Verify the Rebasing Result and Fast-Forward the Local Base Branch
 
-Before removing anything, gather fresh evidence for:
+Before moving the base branch, gather fresh evidence for:
 - the base ref used for the rebase
 - the refreshed base SHA before rebase
 - the safety ref that preserves the pre-rewrite delivery state
@@ -177,7 +155,6 @@ Before removing anything, gather fresh evidence for:
 - the delivery SHA after rebase
 - the verification commands rerun after the rebase
 - any conflicts that were resolved and why
-- whether the delivery worktree is clean enough to remove
 
 Useful checks:
 
@@ -187,42 +164,67 @@ git status --short
 git merge-base --is-ancestor <base-ref> HEAD
 ```
 
-If submodules were in scope, also confirm:
-- the final submodule commit SHA for each touched submodule
-- the delivery branch or approved exception used in each touched submodule
-- the superproject gitlink now points at the intended finished submodule commit
+After the rebased delivery branch is verified:
+1. Move to the clean local checkout that owns the base branch.
+2. Record the local base SHA before fast-forward.
+3. Update the local base branch to the verified delivery commit using `ff-only` semantics or a repo-approved equivalent.
+4. Record the local base SHA after fast-forward.
+5. Confirm the local base SHA now matches the verified delivery SHA.
 
-Do not clean up until the final state is reproducible from recorded SHAs and backup refs.
+Example only:
 
-## Step 7: Optionally Remove the Delivery Worktree
+```bash
+git checkout <base-branch>
+git merge --ff-only <delivery-branch>
+```
 
-Clean up only after the final state is verified.
+If the base branch cannot be updated by fast-forward, stop. Do not create a merge commit and do not rebase the base branch.
+
+## Step 6: Optionally Push the Base Branch
+
+Push only when the user explicitly asked for it and repository policy allows direct base-branch pushes.
+
+Before pushing:
+- confirm the local base branch points at the verified delivery commit
+- confirm the working tree is clean enough for the repository's normal push flow
+- confirm no protected-branch or release rule blocks this push
+
+If any of those checks fail, stop instead of improvising a different publication path.
+
+Do not force-push the base branch as part of this skill.
+
+## Step 7: Clean Up the Temporary Delivery Artifacts
+
+Clean up only after the final state is verified and any explicitly requested base push has completed.
 
 Order:
 1. Leave the delivery worktree so you are not standing inside the directory you are about to remove.
 2. Remove the delivery worktree with the repository helper when one exists.
 3. Otherwise use the repository-approved manual worktree removal flow.
-4. Keep the delivery branch in place for later integration, review, or publication.
+4. Delete the temporary delivery branch after confirming the local base branch now points at the verified delivery commit.
 
 Example only:
 
 ```bash
 git worktree remove <delivery-worktree-path>
+git branch -d <delivery-branch>
 ```
 
 Concrete example:
 
 ```bash
 git worktree remove ../<repo>-feat-provider-endpoint-redesign
+git branch -d feat/provider-endpoint-redesign
 ```
 
 Use force only when the repository already expects it and you have verified no uncommitted work is being discarded.
 
 Do not:
-- delete the delivery branch in this skill
-- rewrite the base branch
+- rebase the base branch
+- create a merge commit to update the base branch
+- retain the delivery branch as the normal final state
 - remove a worktree that still contains uncommitted changes you need
-- push, tag, or open a PR unless the user explicitly asks
+- push, tag, or open a PR unless the user explicitly asked for that specific side effect
 
 ## Required Outputs
 
@@ -230,14 +232,15 @@ Before calling this workflow complete, report:
 - approved plan path, if known
 - base branch and base ref used for the rebase
 - refreshed base SHA before rebase
-- delivery branch name, delivery worktree path, and final SHA
+- delivery branch name, delivery worktree path, and delivery SHA before and after rebase
 - safety ref created before rewrite
+- local base SHA before fast-forward and after fast-forward
 - commit SHAs created during the handoff
 - rebase results, including any conflicts resolved or rollback mechanisms used
 - verification commands run and their status
-- worktree cleanup result
-- explicit note that the delivery branch was retained
-- explicit note that push, PR, release, and deployment steps were not performed unless the user asked for them
+- whether push was requested, allowed, and performed
+- cleanup result for the temporary delivery worktree and delivery branch
+- explicit note that the base branch was not rebased and was updated only by fast-forward semantics
 
 ## Core Rules
 
@@ -246,10 +249,10 @@ Before calling this workflow complete, report:
 3. Create the safety ref before any history rewrite.
 4. Refresh the base ref before rebasing.
 5. Rebase only the delivery branch onto the refreshed base ref.
-6. Verify with exact SHAs before cleanup.
-7. Remove only the delivery worktree in the normal finish flow.
-8. Keep the delivery branch for later integration or publication.
-9. Handle submodule commits and gitlinks explicitly when submodules changed.
+6. Verify the rebased delivery branch before moving the base branch.
+7. Update the local base branch only by `ff-only` semantics or a repo-approved equivalent.
+8. Push the base branch only when explicitly requested and allowed.
+9. Clean up only the temporary delivery worktree and temporary delivery branch.
 
 ## Anti-Patterns
 
@@ -258,10 +261,10 @@ Before calling this workflow complete, report:
 - performing reciprocal rebases between two branches
 - skipping the safety ref before rewriting history
 - relying on the current checkout alone to decide the base ref
-- deleting the delivery branch in the normal finish flow
-- deleting the worktree before the final branch state is proven
-- treating a submodule gitlink conflict like a normal text conflict
-- pushing a rewritten published branch without an explicit `--force-with-lease` policy
+- updating the base branch with a merge commit instead of fast-forward only
+- retaining the delivery branch as the normal final state
+- deleting the worktree before the verified local base fast-forward is complete
+- pushing a rewritten branch without the explicit policy the plan requires
 
 ## Stop Conditions
 
@@ -270,10 +273,10 @@ Stop and ask a targeted question when:
 - the base-to-delivery mapping is unclear
 - the earlier handoff is missing and the current repo state still does not prove the right base ref
 - the delivery branch is already published and the rewrite policy is unclear
-- the repository requires merge, cherry-pick, or squash delivery instead of rebase
+- the repository requires merge, cherry-pick, or squash delivery instead of rebase plus fast-forward
 - the delivery worktree contains unrelated local changes and it is unclear whether they belong in scope
+- there is no clean local base checkout or repo-approved owner available for fast-forward
 - cleanup would require force and you cannot prove the needed work is already preserved elsewhere
-- a touched submodule does not have a clear base-and-delivery mapping
 
 ## Remember
 
@@ -284,5 +287,6 @@ Stop and ask a targeted question when:
 - Refresh the base ref before rebasing
 - Rebase the delivery branch onto the refreshed base ref
 - Verify exact SHAs and rerun promised checks
-- Remove only the delivery worktree if cleanup is desired
-- Keep the delivery branch for later integration
+- Fast-forward the local base branch to the verified delivery commit
+- Push the base branch only when explicitly requested and allowed
+- Remove the temporary delivery worktree and delivery branch when cleanup is complete

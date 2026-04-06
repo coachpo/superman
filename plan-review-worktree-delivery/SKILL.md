@@ -1,6 +1,6 @@
 ---
 name: plan-review-worktree-delivery
-description: Use when a requirement is ready for implementation and you want every task to begin by creating a git worktree, then have @Prometheus draft the plan, @Momus critique it until approval, save the approved plan in the repository, and implement inside that worktree. This skill stops after implementation with a handoff for a later finish flow that rebases only the delivery branch onto a refreshed base ref.
+description: Use when a requirement is ready for implementation and you want every task to begin by creating a git worktree, then have @Prometheus draft the plan, @Momus critique it until approval, save the approved plan in the repository, and implement inside that worktree. This skill stops after implementation with a handoff for a later finish flow that commits the delivery branch, creates a safety ref, rebases the delivery branch onto a refreshed base ref, verifies it, fast-forwards the local base branch, optionally pushes the base branch when explicitly requested and allowed, and cleans up temporary delivery artifacts.
 ---
 
 # Plan Review Worktree Delivery
@@ -9,9 +9,9 @@ description: Use when a requirement is ready for implementation and you want eve
 
 Start every qualifying task by creating a branch-backed delivery worktree from a fresh base ref, then do the planning and implementation flow from that isolated checkout.
 
-**Core principle:** isolate first, approve the plan before coding, implement only in the delivery worktree, and stop with a handoff that preserves one authoritative base branch plus one delivery branch.
+**Core principle:** isolate first, approve the plan before coding, implement only in the delivery worktree, and stop with a handoff that preserves one authoritative base branch plus one temporary delivery branch.
 
-If the repository has submodules or monorepo workspace boundaries, treat them as explicit planning and verification surfaces, not invisible implementation details.
+This version is monorepo-only. If the repository requires a different repo-shape workflow, use a different skill.
 
 ## OpenCode / OMO Compatibility
 
@@ -30,8 +30,8 @@ Use these names consistently:
 
 Default model:
 - the base branch remains authoritative
-- the delivery branch is the only branch rebased in the normal finish flow
-- the base branch is not rebased by these skills
+- the delivery branch is the only branch rebased in the finish flow
+- the base branch is updated later by fast-forward only
 - real task work does not happen on a detached `HEAD`
 
 ## When to Use
@@ -45,6 +45,7 @@ Use this skill when:
 Do not use this skill when:
 - the requirement is still ambiguous or missing acceptance criteria
 - the work is trivial enough that a written multi-round plan would add more ceremony than value
+- the repository requires a different repo-shape workflow
 - the user explicitly wants direct implementation without a critic loop
 
 ## The Iron Law
@@ -52,10 +53,10 @@ Do not use this skill when:
 ```text
 CREATE THE DELIVERY WORKTREE FIRST
 IMPLEMENT ONLY AFTER MOMUS APPROVES A SAVED PLAN
-STOP WITH A CLEAN HANDOFF FOR ONE-WAY DELIVERY FINALIZATION
+STOP WITH A CLEAN HANDOFF FOR REBASE-DELIVERY THEN FAST-FORWARD-BASE FINALIZATION
 ```
 
-Do not draft the real task plan in the main checkout, do not implement before the approved plan exists, and do not continue into commit, rebase, push, PR, release, or cleanup steps inside this skill.
+Do not draft the real task plan in the main checkout, do not implement before the approved plan exists, and do not continue into commit, rebase, push, or cleanup steps inside this skill.
 
 If implementation materially changes the approved approach, update the plan and run the Momus review loop again before continuing.
 
@@ -66,27 +67,25 @@ Create the delivery worktree before Prometheus drafts anything.
 Before creating it, determine:
 - whether the repo already has a worktree helper, wrapper script, or local skill
 - whether `main` is the correct base branch for this repo, or whether the repo clearly uses a different default branch
-- whether the repo has git submodules and whether this task touches any of them
-- whether the repo is a monorepo and which workspace root, packages, or apps are in scope
+- which workspace root, packages, or apps are in scope
 - whether the current checkout is clean enough to create a worktree safely
 - which verification commands will later prove the work is complete
+- which clean local checkout will later own the base-branch fast-forward
 
 Workflow:
 1. Refresh the base ref from the remote unless the repo clearly requires a different source of truth.
 2. Choose a delivery branch name that matches repo conventions.
-3. Use the repo's existing worktree helper if it already handles submodule setup, dependency bootstrap, or environment copying.
+3. Use the repo's existing worktree helper if it already handles dependency bootstrap or environment copying.
 4. Otherwise create the delivery worktree from the refreshed base ref without switching the caller's active checkout just to refresh that base.
-5. If the repo has submodules, initialize them inside the new worktree before planning against that checkout.
-6. If the repo is a monorepo, run any required bootstrap or install step inside the new worktree before planning against that checkout, and record the exact scoped verification commands you expect to use later.
-7. If the worktree lands on a detached `HEAD`, stop and attach a named delivery branch before planning or coding.
+5. Run any required bootstrap or install step inside the new worktree before planning against that checkout, and record the exact scoped verification commands you expect to use later.
+6. If the worktree lands on a detached `HEAD`, stop and attach a named delivery branch before planning or coding.
 
 Example only:
 ```bash
 git fetch origin
 git worktree add -b <delivery-branch> ../<repo>-<branch-slug> origin/<base-branch>
 cd ../<repo>-<branch-slug>
-git submodule update --init --recursive
-# If the repo is a monorepo, run the repo-approved bootstrap/install step here.
+# Run the repo-approved bootstrap/install step here when needed.
 ```
 
 Record the following immediately:
@@ -96,14 +95,9 @@ Record the following immediately:
 - delivery branch
 - delivery worktree path
 - whether the delivery branch is expected to stay local or may later be published
+- the clean local checkout or repo-approved owner that will later fast-forward the base branch
 
-If the repo has submodules, also record:
-- whether the task changes the superproject only, one submodule, or multiple submodules
-- which submodules were initialized in the worktree
-- for each touched submodule, the expected base branch or base ref, delivery branch, and gitlink outcome
-- whether any repo-specific exception allows a detached submodule state during finish, and why that exception is valid
-
-If the repo is a monorepo, also record:
+For the monorepo scope, also record:
 - the workspace root in scope
 - the packages or apps in scope
 - whether bootstrap or install already ran in the new worktree
@@ -123,8 +117,8 @@ Give Prometheus:
 - the chosen delivery worktree path
 - the chosen delivery branch name
 - whether the delivery branch is expected to stay local or may later be published
-- any submodules in scope
-- any monorepo workspace root, packages, or apps in scope
+- the clean local checkout or repo-approved owner that will later fast-forward the base branch
+- the monorepo workspace root, packages, or apps in scope
 - any required bootstrap or install step for the delivery worktree
 - constraints, deadlines, or non-goals
 - expected verification surfaces and exact scoped verification commands
@@ -134,14 +128,13 @@ Require the plan to include:
 - goal and scope
 - assumptions and open risks
 - the base-and-delivery branch model
-- file, subsystem, workspace, or package touch points
-- superproject versus submodule responsibilities
-- monorepo workspace or package responsibilities when applicable
+- workspace or package touch points
 - implementation sequence
 - bootstrap or install expectations for the worktree
 - verification strategy
 - finish workflow contract for later delivery-branch finalization
 - rewrite-safety rules, including backup ref format and rollback path
+- local base fast-forward expectations
 
 Load `references/plan-artifacts.md` for a reusable planner prompt and approved-plan template.
 
@@ -156,8 +149,8 @@ Require every Momus review to return:
 - any scope mismatch between the requirement and the plan
 - any attempt to rebase the base branch later
 - any missing rewrite-safety rule, backup ref, or rollback note
-- any missing submodule base-and-delivery mapping if the repo uses submodules
-- any missing monorepo workspace scope, bootstrap, or scoped verification if the repo is a monorepo
+- any missing workspace scope, bootstrap, or scoped verification
+- any plan that updates the base branch by merge commit instead of fast-forward only
 - concrete revision guidance
 
 ## Step 4: Repeat the Revision Cycle Until Momus Approves
@@ -190,9 +183,8 @@ At minimum, the saved plan must capture:
 - the resolved base branch, base ref, and base SHA used for worktree creation
 - the created delivery branch name and delivery worktree path
 - whether the delivery branch is expected to stay local or may later be published
-- any monorepo workspace root, packages or apps in scope, and required bootstrap or install steps
-- any submodules in scope, their expected base-and-delivery mapping, and the intended gitlink outcome
-- the finish workflow contract, including the safety ref format and the rule that only the delivery branch is rebased later
+- the monorepo workspace root, packages or apps in scope, and required bootstrap or install steps
+- the finish workflow contract, including the safety ref format, the rule that only the delivery branch is rebased later, the rule that the base branch is fast-forwarded only, and the rule that any push is explicit-request-only
 
 Use the template in `references/plan-artifacts.md` when the repo does not already define its own plan format.
 
@@ -205,16 +197,10 @@ Inside the delivery worktree:
 - rerun the Momus approval loop for material plan changes
 - follow any repo-specific implementation skills that apply
 
-If the repo is a monorepo:
+For the monorepo scope:
 - keep the plan explicit about the workspace root and packages or apps in scope
 - run the repo-required bootstrap or install steps for that scope before implementation when needed
 - verify the touched scope with the exact commands promised in the approved plan instead of falling back to a generic repo-root check
-
-If the repo uses submodules:
-- keep the plan explicit about whether you are editing the superproject, submodule contents, or both
-- initialize and inspect submodules before editing them
-- avoid leaving unrelated submodules dirty
-- treat each touched submodule as its own base-and-delivery workflow surface unless the repository documents a stronger rule
 
 Do not silently drift away from the approved plan.
 
@@ -224,6 +210,7 @@ Before handing off to the finish workflow, make sure the approved plan already d
 - the exact safety ref format the finish workflow must create before any history rewrite
 - the published-branch policy for the delivery branch
 - the rollback path if rebase fails or the branch graph looks wrong
+- the exact clean local checkout or repo-approved owner that will fast-forward the base branch
 - whether any repo-specific rule forbids rebasing and would require a different finish workflow entirely
 
 Do not assume later steps can infer these rules from the current checkout.
@@ -240,12 +227,6 @@ Minimum checks:
 - for monorepos, the exact scoped verification promised for each touched package, app, or affected-project surface
 - a quick re-read of the plan to confirm every implemented change still maps back to approved scope
 
-If submodules are in scope, verify the right level:
-- run the required checks inside each touched submodule when the task changes submodule code
-- confirm the current commit SHA in each touched submodule
-- confirm the intended gitlink outcome is still documented for the superproject handoff
-- confirm no unrelated submodules were touched accidentally
-
 If verification fails, fix the real issue before stopping.
 
 Then produce a handoff report that gives the later finish workflow everything it needs.
@@ -260,21 +241,12 @@ Required handoff fields:
 - delivery `HEAD` before finish
 - whether the delivery branch is local-only or already published
 - promised safety ref format
+- the clean local checkout or repo-approved owner that will later fast-forward the base branch
 - verification commands run and their status
-- if the repo is a monorepo:
-  - workspace root in scope
-  - packages or apps in scope
-  - bootstrap or install commands run in the worktree
-- for each touched submodule:
-  - submodule path
-  - base branch or base ref
-  - delivery branch or approved exception
-  - exact commit SHA used
-  - intended gitlink outcome
-  - whether it was modified
-- explicit statement that commit, rebase, push, PR, release, and cleanup were not performed by this skill
-
-If no submodule branches or extra worktrees were used, say so explicitly instead of omitting the section.
+- workspace root in scope
+- packages or apps in scope
+- bootstrap or install commands run in the worktree
+- explicit statement that commit, rebase, push, and cleanup were not performed by this skill
 
 ## Required Outputs
 
@@ -284,8 +256,7 @@ Before calling this workflow complete, produce:
 - verification evidence from the delivery worktree state you are about to leave in place
 - a complete base-ref and delivery-branch handoff for the main repo
 - scoped verification evidence for each monorepo package or app in scope when applicable
-- a complete base-and-delivery inventory for every submodule used
-- explicit statement that commit, rebase, push, PR, release, and cleanup were not performed by this skill
+- explicit statement that commit, rebase, push, and cleanup were not performed by this skill
 
 ## Anti-Patterns
 
@@ -299,9 +270,9 @@ Before calling this workflow complete, produce:
 - planning a finish flow that rebases the base branch
 - planning reciprocal rebases between two branches
 - approving a plan without a backup-ref format or rollback path
-- ignoring `.gitmodules` or touched submodules during planning
+- approving a plan without a named local base fast-forward target
 - approving a monorepo plan without naming workspace scope, bootstrap requirements, and scoped verification commands
-- defaulting to branch deletion in the later finish flow
+- planning to retain the delivery branch as the final state instead of fast-forwarding base and cleaning up temporary delivery artifacts
 - leaving the handoff vague about which branch is authoritative and which branch is disposable
 
 ## Stop Conditions
@@ -310,9 +281,8 @@ Stop and ask a targeted question when:
 - the requirement is not actually implementation-ready
 - the base branch assumption appears wrong for this repo
 - the verification command is unknown
-- the repo is a monorepo and the workspace scope or bootstrap and verification commands are unknown
+- the workspace scope or bootstrap and verification commands are unknown
 - the critic loop exposes unresolved product decisions
-- the repo has submodules and it is unclear which submodule branch model should be used
 - the delivery branch may already be published and the rewrite policy is unclear
-- the later finish flow would need to preserve merge commits or follow a merge-only policy instead of rebase
+- the later finish flow would need to preserve merge commits or follow a merge-only policy instead of rebase plus fast-forward
 - the base-ref and delivery-branch handoff inventory is incomplete

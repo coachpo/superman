@@ -1,4 +1,0 @@
-interface:
-  display_name: "Finish Worktree Delivery"
-  short_description: "Commit delivery, create safety ref, rebase onto base, fast-forward base, optionally push, and clean up"
-  default_prompt: "Use $finish-worktree-delivery to finalize a completed worktree implementation by committing the delivery branch, creating a safety ref, refreshing the base ref, rebasing the delivery branch onto that refreshed base ref, verifying the rebased result, fast-forwarding the local base branch, optionally pushing the base branch only when explicitly requested and allowed, and cleaning up the temporary delivery worktree and branch."
